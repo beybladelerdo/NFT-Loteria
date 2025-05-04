@@ -17,107 +17,15 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import Trie "mo:base/Trie";
+import T "./types";
 
 actor GameLogic {
-  // Types
-  type GameId = Nat;
-  type PlayerId = Principal;
-  type TablaId = Nat;
-  type CardId = Nat;
-
-  // Card positions in tabla
-  type Position = {
-    row: Nat;
-    col: Nat;
-  };
-
-  // Game status
-  type GameStatus = {
-    #lobby;    // Players can join
-    #active;   // Game in progress
-    #completed; // Game finished
-  };
-
-  // Game mode
-  type GameMode = {
-    #line;     // Win by completing a line, row, or diagonal
-    #blackout; // Win by marking all positions
-  };
-
-  // Token type
-  type TokenType = {
-    #ICP;
-    #ckBTC;
-  };
-
-  // Marca (player mark on a tabla)
-  type Marca = {
-    playerId: PlayerId;
-    tablaId: TablaId;
-    position: Position;
-    timestamp: Int;
-  };
-
-  // Win claim
-  type WinClaim = {
-    playerId: PlayerId;
-    tablaId: TablaId;
-    positions: [Position];
-    timestamp: Int;
-  };
-
-  // Game
-  type Game = {
-    id: GameId;
-    name: Text;
-    host: PlayerId;
-    createdAt: Int;
-    status: GameStatus;
-    mode: GameMode;
-    tokenType: TokenType;
-    entryFee: Nat;
-    hostFeePercent: Nat;
-    players: [PlayerId];
-    tablas: [(PlayerId, TablaId)]; // Tracks which tablas are used by which players
-    drawnCards: [CardId];
-    currentCard: ?CardId;
-    marcas: [Marca];
-    winner: ?PlayerId;
-    prizePool: Nat;
-  };
-
-  // Game creation parameters
-  type GameParams = {
-    name: Text;
-    mode: GameMode;
-    tokenType: TokenType;
-    entryFee: Nat;
-    hostFeePercent: Nat;
-  };
-
-  // Game info (public view)
-  type GameInfo = {
-    id: GameId;
-    name: Text;
-    host: PlayerId;
-    createdAt: Int;
-    status: GameStatus;
-    mode: GameMode;
-    tokenType: TokenType;
-    entryFee: Nat;
-    hostFeePercent: Nat;
-    playerCount: Nat;
-    maxPlayers: Nat;
-    drawnCardCount: Nat;
-    currentCard: ?CardId;
-    winner: ?PlayerId;
-    prizePool: Nat;
-  };
+  
 
   // State variables
-  private stable var nextGameId: GameId = 1;
-  private stable var gameEntries: [(GameId, Game)] = [];
-  private var games = HashMap.fromIter<GameId, Game>(
+  private stable var nextGameId: T.GameId = 1;
+  private stable var gameEntries: [(T.GameId, T.Game)] = [];
+  private var games = HashMap.fromIter<T.GameId, T.Game>(
     gameEntries.vals(), 
     10, 
     Nat.equal, 
@@ -131,12 +39,12 @@ actor GameLogic {
   let TOTAL_CARDS = 54; // Total number of cards in the deck
 
   // Create a new game
-  public shared(msg) func createGame(params: GameParams) : async Result.Result<GameId, Text> {
+  public shared(msg) func createGame(params: T.GameParams) : async Result.Result<T.GameId, Text> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot create games");
-    }
+    };
     
     // Validate params
     if (params.hostFeePercent > 20) {
@@ -147,7 +55,7 @@ actor GameLogic {
       return #err("Game name cannot be empty");
     };
     
-    let newGame: Game = {
+    let newGame: T.Game = {
       id = nextGameId;
       name = params.name;
       host = caller;
@@ -173,8 +81,8 @@ actor GameLogic {
   };
   
   // Get games in lobby state
-  public query func getOpenGames() : async [GameInfo] {
-    let openGames = Buffer.Buffer<GameInfo>(10);
+  public query func getOpenGames() : async [T.GameInfo] {
+    let openGames = Buffer.Buffer<T.GameInfo>(10);
     
     for ((id, game) in games.entries()) {
       if (game.status == #lobby) {
@@ -202,8 +110,8 @@ actor GameLogic {
   };
   
   // Get games in active state
-  public query func getActiveGames() : async [GameInfo] {
-    let activeGames = Buffer.Buffer<GameInfo>(10);
+  public query func getActiveGames() : async [T.GameInfo] {
+    let activeGames = Buffer.Buffer<T.GameInfo>(10);
     
     for ((id, game) in games.entries()) {
       if (game.status == #active) {
@@ -231,7 +139,7 @@ actor GameLogic {
   };
   
   // Get a specific game
-  public query func getGame(gameId: GameId) : async ?GameInfo {
+  public query func getGame(gameId: T.GameId) : async ?T.GameInfo {
     switch (games.get(gameId)) {
       case (null) { null };
       case (?game) {
@@ -257,7 +165,7 @@ actor GameLogic {
   };
   
   // Join a game
-  public shared(msg) func joinGame(gameId: GameId) : async Result.Result<(), Text> {
+  public shared(msg) func joinGame(gameId: T.GameId) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
@@ -283,7 +191,7 @@ actor GameLogic {
         };
         
         // Add player to the game
-        let updatedPlayers = Array.append<PlayerId>(game.players, [caller]);
+        let updatedPlayers = Array.append<T.PlayerId>(game.players, [caller]);
         
         let updatedGame = {
           id = game.id;
@@ -311,7 +219,7 @@ actor GameLogic {
   };
   
   // Add tabla to player in a game
-  public shared(msg) func addTablaToGame(gameId: GameId, tablaId: TablaId) : async Result.Result<(), Text> {
+  public shared(msg) func addTablaToGame(gameId: T.GameId, tablaId: T.TablaId) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
@@ -353,7 +261,7 @@ actor GameLogic {
         };
         
         // Add tabla to the game
-        let updatedTablas = Array.append<(PlayerId, TablaId)>(game.tablas, [(caller, tablaId)]);
+        let updatedTablas = Array.append<(T.PlayerId, T.TablaId)>(game.tablas, [(caller, tablaId)]);
         
         let updatedGame = {
           id = game.id;
@@ -381,7 +289,7 @@ actor GameLogic {
   };
   
   // Start the game (host only)
-  public shared(msg) func startGame(gameId: GameId) : async Result.Result<(), Text> {
+  public shared(msg) func startGame(gameId: T.GameId) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     switch (games.get(gameId)) {
@@ -425,7 +333,7 @@ actor GameLogic {
   };
   
   // Draw a card (host only)
-  public shared(msg) func drawCard(gameId: GameId) : async Result.Result<CardId, Text> {
+  public shared(msg) func drawCard(gameId: T.GameId) : async Result.Result<T.CardId, Text> {
     let caller = msg.caller;
     
     switch (games.get(gameId)) {
@@ -444,10 +352,10 @@ actor GameLogic {
         };
         
         // Use game ID and timestamp for pseudo-randomness
-        let seed = (Text.hash(Int.toText(Time.now())) + game.id) % TOTAL_CARDS; 
+        let seed = Nat32.toNat((Text.hash(Int.toText(Time.now())) + game.id)) % TOTAL_CARDS; 
         
         // Find a card that hasn't been drawn yet
-        var cardId : CardId = (seed % TOTAL_CARDS) + 1;
+        var cardId : T.CardId = (seed % TOTAL_CARDS) + 1;
         var attempts = 0;
         
         // Keep trying until we find an undrawn card
@@ -462,7 +370,7 @@ actor GameLogic {
         };
         
         // Update the game with the new card
-        let updatedDrawnCards = Array.append<CardId>(game.drawnCards, [cardId]);
+        let updatedDrawnCards = Array.append<T.CardId>(game.drawnCards, [cardId]);
         
         let updatedGame = {
           id = game.id;
@@ -490,12 +398,12 @@ actor GameLogic {
   };
   
   // Mark a position on a tabla
-  public shared(msg) func markPosition(gameId: GameId, tablaId: TablaId, position: Position) : async Result.Result<(), Text> {
+  public shared(msg) func markPosition(gameId: T.GameId, tablaId: T.TablaId, position: T.Position) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot mark positions");
-    }
+    };
     
     switch (games.get(gameId)) {
       case (null) { #err("Game not found") };
@@ -566,12 +474,12 @@ actor GameLogic {
   };
   
   // Claim a win
-  public shared(msg) func claimWin(gameId: GameId, tablaId: TablaId) : async Result.Result<(), Text> {
+  public shared(msg) func claimWin(gameId: T.GameId, tablaId: T.TablaId) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot claim wins");
-    }
+    };
     
     switch (games.get(gameId)) {
       case (null) { #err("Game not found") };
@@ -726,7 +634,7 @@ actor GameLogic {
   };
   
   // Get drawn cards for a game
-  public query func getDrawnCards(gameId: GameId) : async Result.Result<[CardId], Text> {
+  public query func getDrawnCards(gameId: T.GameId) : async Result.Result<[T.CardId], Text> {
     switch (games.get(gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
@@ -736,7 +644,7 @@ actor GameLogic {
   };
   
   // Get current card for a game
-  public query func getCurrentCard(gameId: GameId) : async Result.Result<?CardId, Text> {
+  public query func getCurrentCard(gameId: T.GameId) : async Result.Result<?T.CardId, Text> {
     switch (games.get(gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
@@ -746,7 +654,7 @@ actor GameLogic {
   };
   
   // End game (host only)
-  public shared(msg) func endGame(gameId: GameId) : async Result.Result<(), Text> {
+  public shared(msg) func endGame(gameId: T.GameId) : async Result.Result<(), Text> {
     let caller = msg.caller;
     
     switch (games.get(gameId)) {
