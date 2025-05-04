@@ -1,0 +1,518 @@
+import Principal "mo:base/Principal";
+import HashMap "mo:base/HashMap";
+import Hash "mo:base/Hash";
+import Nat "mo:base/Nat";
+import Int "mo:base/Int";
+import Iter "mo:base/Iter";
+import Array "mo:base/Array";
+import Result "mo:base/Result";
+import Text "mo:base/Text";
+import Time "mo:base/Time";
+import Buffer "mo:base/Buffer";
+
+actor PaymentSystem {
+  // Types
+  type AccountId = Principal;
+  type GameId = Nat;
+  type TablaId = Nat;
+
+  // Token types
+  type TokenType = {
+    #ICP;
+    #ckBTC;
+  };
+
+  // Transaction types
+  type TransactionType = {
+    #deposit;
+    #withdrawal;
+    #gameEntryFee;
+    #gameWinnings;
+    #tablaRental;
+    #tablaRentalIncome;
+    #platformFee;
+  };
+
+  // Transaction status
+  type TransactionStatus = {
+    #pending;
+    #completed;
+    #failed;
+  };
+
+  // Transaction record
+  type Transaction = {
+    id: Nat;
+    fromAccount: ?AccountId;
+    toAccount: ?AccountId;
+    amount: Nat;
+    tokenType: TokenType;
+    transactionType: TransactionType;
+    status: TransactionStatus;
+    timestamp: Int;
+    gameId: ?GameId;
+    tablaId: ?TablaId;
+    memo: ?Text;
+  };
+
+  // Account balance
+  type AccountBalance = {
+    ICP: Nat;
+    ckBTC: Nat;
+  };
+
+  // Transaction info (public view)
+  type TransactionInfo = {
+    id: Nat;
+    fromAccount: ?AccountId;
+    toAccount: ?AccountId;
+    amount: Nat;
+    tokenType: TokenType;
+    transactionType: TransactionType;
+    status: TransactionStatus;
+    timestamp: Int;
+    gameId: ?GameId;
+    tablaId: ?TablaId;
+    memo: ?Text;
+  };
+
+  // State variables
+  private stable var nextTransactionId: Nat = 1;
+  private stable var transactionEntries: [(Nat, Transaction)] = [];
+  private var transactions = HashMap.fromIter<Nat, Transaction>(
+    transactionEntries.vals(), 
+    10, 
+    Nat.equal, 
+    Hash.hash
+  );
+
+  private stable var balanceEntries: [(AccountId, AccountBalance)] = [];
+  private var balances = HashMap.fromIter<AccountId, AccountBalance>(
+    balanceEntries.vals(),
+    10,
+    Principal.equal,
+    Principal.hash
+  );
+
+  // Platform account
+  private let platformAccount: Principal = Principal.fromText("aaaaa-aa"); // canister ID
+
+  // Initialize balances (for testing)
+  public shared func initializeTestBalances() : async () {
+    // If already initialized, do nothing
+    if (balances.size() > 0) {
+      return;
+    };
+
+    // Create some test balances
+    let testUsers = [
+      Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"),
+      Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"),
+      Principal.fromText("r7inp-6aaaa-aaaaa-aaabq-cai")
+    ];
+
+    for (user in testUsers.vals()) {
+      balances.put(user, { ICP = 10_000_000; ckBTC = 1_000_000 }); // 100 ICP, 0.01 ckBTC
+    };
+  };
+
+  // Helper: get or create account balance
+  private func getOrCreateBalance(account: AccountId) : AccountBalance {
+    switch (balances.get(account)) {
+      case (null) {
+        let newBalance: AccountBalance = { ICP = 0; ckBTC = 0 };
+        balances.put(account, newBalance);
+        newBalance
+      };
+      case (?balance) { balance };
+    };
+  };
+
+  // Helper: update account balance
+  private func updateBalance(account: AccountId, tokenType: TokenType, amount: Nat, isAddition: Bool) : () {
+    let currentBalance = getOrCreateBalance(account);
+    
+    let updatedBalance = switch (tokenType) {
+      case (#ICP) {
+        if (isAddition) {
+          { ICP = currentBalance.ICP + amount; ckBTC = currentBalance.ckBTC }
+        } else {
+          // Ensure we don't go below zero
+          let newBalance = if (currentBalance.ICP >= amount) {
+            currentBalance.ICP - amount
+          } else {
+            0
+          };
+          { ICP = newBalance; ckBTC = currentBalance.ckBTC }
+        }
+      };
+      case (#ckBTC) {
+        if (isAddition) {
+          { ICP = currentBalance.ICP; ckBTC = currentBalance.ckBTC + amount }
+        } else {
+          // Ensure we don't go below zero
+          let newBalance = if (currentBalance.ckBTC >= amount) {
+            currentBalance.ckBTC - amount
+          } else {
+            0
+          };
+          { ICP = currentBalance.ICP; ckBTC = newBalance }
+        }
+      };
+    };
+    
+    balances.put(account, updatedBalance);
+  };
+
+  // Helper: record a transaction
+  private func recordTransaction(
+    fromAccount: ?AccountId,
+    toAccount: ?AccountId,
+    amount: Nat,
+    tokenType: TokenType,
+    transactionType: TransactionType,
+    gameId: ?GameId,
+    tablaId: ?TablaId,
+    memo: ?Text
+  ) : Nat {
+    let transaction: Transaction = {
+      id = nextTransactionId;
+      fromAccount = fromAccount;
+      toAccount = toAccount;
+      amount = amount;
+      tokenType = tokenType;
+      transactionType = transactionType;
+      status = #completed;
+      timestamp = Time.now();
+      gameId = gameId;
+      tablaId = tablaId;
+      memo = memo;
+    };
+    
+    transactions.put(nextTransactionId, transaction);
+    let txId = nextTransactionId;
+    nextTransactionId += 1;
+    
+    txId
+  };
+
+  // Get account balance
+  public query func getBalance(account: AccountId) : async AccountBalance {
+    getOrCreateBalance(account)
+  };
+
+  // Deposit (mock)
+  public shared(msg) func deposit(tokenType: TokenType, amount: Nat) : async Result.Result<Nat, Text> {
+    let caller = msg.caller;
+    
+    if (Principal.isAnonymous(caller)) {
+      return #err("Anonymous identity cannot deposit");
+    };
+    
+    // Update balance
+    updateBalance(caller, tokenType, amount, true);
+    
+    // Record transaction
+    let txId = recordTransaction(
+      null, // From external
+      ?caller,
+      amount,
+      tokenType,
+      #deposit,
+      null,
+      null,
+      ?("Deposit of " # Nat.toText(amount) # " " # (if (tokenType == #ICP) "ICP" else "ckBTC"))
+    );
+    
+    #ok(txId)
+  };
+
+  // Withdraw (mock)
+  public shared(msg) func withdraw(tokenType: TokenType, amount: Nat) : async Result.Result<Nat, Text> {
+    let caller = msg.caller;
+    
+    if (Principal.isAnonymous(caller)) {
+      return #err("Anonymous identity cannot withdraw");
+    };
+    
+    // Check balance
+    let balance = getOrCreateBalance(caller);
+    let currentBalance = switch (tokenType) {
+      case (#ICP) { balance.ICP };
+      case (#ckBTC) { balance.ckBTC };
+    };
+    
+    if (currentBalance < amount) {
+      return #err("Insufficient balance");
+    };
+    
+    // Update balance
+    updateBalance(caller, tokenType, amount, false);
+    
+    // Record transaction
+    let txId = recordTransaction(
+      ?caller,
+      null, // To external
+      amount,
+      tokenType,
+      #withdrawal,
+      null,
+      null,
+      ?("Withdrawal of " # Nat.toText(amount) # " " # (if (tokenType == #ICP) "ICP" else "ckBTC"))
+    );
+    
+    #ok(txId)
+  };
+
+  // Pay game entry fee
+  public shared(msg) func payGameEntryFee(gameId: GameId, amount: Nat, tokenType: TokenType) : async Result.Result<Nat, Text> {
+    let caller = msg.caller;
+    
+    if (Principal.isAnonymous(caller)) {
+      return #err("Anonymous identity cannot pay fees");
+    };
+    
+    // Check balance
+    let balance = getOrCreateBalance(caller);
+    let currentBalance = switch (tokenType) {
+      case (#ICP) { balance.ICP };
+      case (#ckBTC) { balance.ckBTC };
+    };
+    
+    if (currentBalance < amount) {
+      return #err("Insufficient balance");
+    };
+    
+    // Update player balance
+    updateBalance(caller, tokenType, amount, false);
+    
+    // Update platform balance (entry fees go to prize pool)
+    updateBalance(platformAccount, tokenType, amount, true);
+    
+    // Record transaction
+    let txId = recordTransaction(
+      ?caller,
+      ?platformAccount,
+      amount,
+      tokenType,
+      #gameEntryFee,
+      ?gameId,
+      null,
+      ?("Entry fee for game " # Nat.toText(gameId))
+    );
+    
+    #ok(txId)
+  };
+
+  // Pay tabla rental fee
+  public shared(msg) func payTablaRental(tablaId: TablaId, amount: Nat, tokenType: TokenType, owner: Principal) : async Result.Result<Nat, Text> {
+    let caller = msg.caller;
+    
+    if (Principal.isAnonymous(caller)) {
+      return #err("Anonymous identity cannot rent tablas");
+    };
+    
+    // Check balance
+    let balance = getOrCreateBalance(caller);
+    let currentBalance = switch (tokenType) {
+      case (#ICP) { balance.ICP };
+      case (#ckBTC) { balance.ckBTC };
+    };
+    
+    if (currentBalance < amount) {
+      return #err("Insufficient balance");
+    };
+    
+    // Calculate fees
+    let ownerFee = amount * 80 / 100; // 80% to owner
+    let platformFee = amount - ownerFee; // 20% to platform
+    
+    // Update balances
+    updateBalance(caller, tokenType, amount, false);
+    updateBalance(owner, tokenType, ownerFee, true);
+    updateBalance(platformAccount, tokenType, platformFee, true);
+    
+    // Record transaction for rental
+    let txId = recordTransaction(
+      ?caller,
+      ?owner,
+      amount,
+      tokenType,
+      #tablaRental,
+      null,
+      ?tablaId,
+      ?("Rental of tabla " # Nat.toText(tablaId))
+    );
+    
+    // Record transaction for platform fee
+    let _ = recordTransaction(
+      ?caller,
+      ?platformAccount,
+      platformFee,
+      tokenType,
+      #platformFee,
+      null,
+      ?tablaId,
+      ?("Platform fee for tabla rental " # Nat.toText(tablaId))
+    );
+    
+    // Record transaction for owner income
+    let _ = recordTransaction(
+      ?caller,
+      ?owner,
+      ownerFee,
+      tokenType,
+      #tablaRentalIncome,
+      null,
+      ?tablaId,
+      ?("Rental income for tabla " # Nat.toText(tablaId))
+    );
+    
+    #ok(txId)
+  };
+
+  // Distribute game winnings
+  public shared(msg) func distributeWinnings(gameId: GameId, winner: Principal, ownerFee: Nat, tokenType: TokenType, owner: ?Principal) : async Result.Result<Nat, Text> {
+    let caller = msg.caller;
+    
+    // In a real implementation, this would be restricted to the game logic canister
+    // but for testing, we'll allow anyone to call it
+    
+    // Get prize pool from platform account
+    let platformBalance = getOrCreateBalance(platformAccount);
+    let prizePool = switch (tokenType) {
+      case (#ICP) { platformBalance.ICP };
+      case (#ckBTC) { platformBalance.ckBTC };
+    };
+    
+    if (prizePool < ownerFee) {
+      return #err("Insufficient prize pool");
+    };
+    
+    let winnerAmount = prizePool - ownerFee;
+    
+    // Transfer to winner
+    updateBalance(platformAccount, tokenType, winnerAmount, false);
+    updateBalance(winner, tokenType, winnerAmount, true);
+    
+    // Transfer owner fee if there's an owner
+    switch (owner) {
+      case (null) { };
+      case (?ownerPrincipal) {
+        updateBalance(platformAccount, tokenType, ownerFee, false);
+        updateBalance(ownerPrincipal, tokenType, ownerFee, true);
+      };
+    };
+    
+    // Record transaction for winner
+    let txId = recordTransaction(
+      ?platformAccount,
+      ?winner,
+      winnerAmount,
+      tokenType,
+      #gameWinnings,
+      ?gameId,
+      null,
+      ?("Winnings for game " # Nat.toText(gameId))
+    );
+    
+    // Record transaction for owner if any
+    switch (owner) {
+      case (null) { };
+      case (?ownerPrincipal) {
+        let _ = recordTransaction(
+          ?platformAccount,
+          ?ownerPrincipal,
+          ownerFee,
+          tokenType,
+          #tablaRentalIncome,
+          ?gameId,
+          null,
+          ?("NFT owner fee for game " # Nat.toText(gameId))
+        );
+      };
+    };
+    
+    #ok(txId)
+  };
+
+  // Get transaction history for an account
+  public query func getTransactions(account: AccountId) : async [TransactionInfo] {
+    let accountTransactions = Buffer.Buffer<TransactionInfo>(10);
+    
+    for ((_, tx) in transactions.entries()) {
+      switch (tx.fromAccount, tx.toAccount) {
+        case (?from, _) {
+          if (Principal.equal(from, account)) {
+            accountTransactions.add({
+              id = tx.id;
+              fromAccount = tx.fromAccount;
+              toAccount = tx.toAccount;
+              amount = tx.amount;
+              tokenType = tx.tokenType;
+              transactionType = tx.transactionType;
+              status = tx.status;
+              timestamp = tx.timestamp;
+              gameId = tx.gameId;
+              tablaId = tx.tablaId;
+              memo = tx.memo;
+            });
+          };
+        };
+        case (_, ?to) {
+          if (Principal.equal(to, account)) {
+            accountTransactions.add({
+              id = tx.id;
+              fromAccount = tx.fromAccount;
+              toAccount = tx.toAccount;
+              amount = tx.amount;
+              tokenType = tx.tokenType;
+              transactionType = tx.transactionType;
+              status = tx.status;
+              timestamp = tx.timestamp;
+              gameId = tx.gameId;
+              tablaId = tx.tablaId;
+              memo = tx.memo;
+            });
+          };
+        };
+        case (_, _) { };
+      };
+    };
+    
+    Buffer.toArray(accountTransactions)
+  };
+
+  // Get transaction by ID
+  public query func getTransaction(transactionId: Nat) : async ?TransactionInfo {
+    switch (transactions.get(transactionId)) {
+      case (null) { null };
+      case (?tx) {
+        ?{
+          id = tx.id;
+          fromAccount = tx.fromAccount;
+          toAccount = tx.toAccount;
+          amount = tx.amount;
+          tokenType = tx.tokenType;
+          transactionType = tx.transactionType;
+          status = tx.status;
+          timestamp = tx.timestamp;
+          gameId = tx.gameId;
+          tablaId = tx.tablaId;
+          memo = tx.memo;
+        }
+      };
+    }
+  };
+
+  // System upgrade hooks
+  system func preupgrade() {
+    transactionEntries := Iter.toArray(transactions.entries());
+    balanceEntries := Iter.toArray(balances.entries());
+  };
+  
+  system func postupgrade() {
+    transactionEntries := [];
+    balanceEntries := [];
+  };
+}

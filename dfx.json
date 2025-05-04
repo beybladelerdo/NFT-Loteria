@@ -1,0 +1,38 @@
+{
+  "canisters": {
+    "game_logic": {
+      "main": "src/canisters/game_logic/main.mo",
+      "type": "motoko"
+    },
+    "tabla_rental": {
+      "main": "src/canisters/tabla_rental/main.mo",
+      "type": "motoko"
+    },
+    "payment_system": {
+      "main": "src/canisters/payment_system/main.mo",
+      "type": "motoko"
+    },
+    "frontend": {
+      "dependencies": [
+        "game_logic",
+        "tabla_rental",
+        "payment_system"
+      ],
+      "frontend": {
+        "entrypoint": "src/frontend/src/index.html"
+      },
+      "source": [
+        "src/frontend/assets",
+        "dist/frontend/"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "version": 1
+}
