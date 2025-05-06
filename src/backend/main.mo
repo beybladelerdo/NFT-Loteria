@@ -28,8 +28,8 @@ actor GameLogic {
   private var games = HashMap.fromIter<T.GameId, T.Game>(
     gameEntries.vals(), 
     10, 
-    Nat.equal, 
-    Hash.hash
+    eqNat32, 
+    hashNat32
   );
 
   // Constants
@@ -355,17 +355,17 @@ actor GameLogic {
         let seed = Nat32.toNat((Text.hash(Int.toText(Time.now())) + game.id)) % TOTAL_CARDS; 
         
         // Find a card that hasn't been drawn yet
-        var cardId : T.CardId = (seed % TOTAL_CARDS) + 1;
+        var cardId : T.CardId = Nat32.fromNat((seed % TOTAL_CARDS)) + 1;
         var attempts = 0;
         
         // Keep trying until we find an undrawn card
-        while (Array.find<CardId>(game.drawnCards, func(c) { c == cardId }) != null and attempts < TOTAL_CARDS) {
-          cardId := (cardId % TOTAL_CARDS) + 1;
+        while (Array.find<T.CardId>(game.drawnCards, func(c) { c == cardId }) != null and attempts < TOTAL_CARDS) {
+          cardId := (cardId % Nat32.fromNat(TOTAL_CARDS)) + 1;
           attempts += 1;
         };
         
         // Make sure we found an undrawn card
-        if (Array.find<CardId>(game.drawnCards, func(c) { c == cardId }) != null) {
+        if (Array.find<T.CardId>(game.drawnCards, func(c) { c == cardId }) != null) {
           return #err("Could not find an undrawn card");
         };
         
@@ -439,14 +439,14 @@ actor GameLogic {
         };
         
         // Add the mark
-        let newMarca: Marca = {
+        let newMarca: T.Marca = {
           playerId = caller;
           tablaId = tablaId;
           position = position;
           timestamp = Time.now();
         };
         
-        let updatedMarcas = Array.append<Marca>(game.marcas, [newMarca]);
+        let updatedMarcas = Array.append<T.Marca>(game.marcas, [newMarca]);
         
         let updatedGame = {
           id = game.id;
@@ -505,7 +505,7 @@ actor GameLogic {
         };
         
         // Get all marked positions for this tabla by this player
-        let playerMarks = Array.filter<Marca>(
+        let playerMarks = Array.filter<T.Marca>(
           game.marcas, 
           func(m) { Principal.equal(m.playerId, caller) and m.tablaId == tablaId }
         );
@@ -519,11 +519,19 @@ actor GameLogic {
             for (row in Iter.range(0, TABLA_SIZE - 1)) {
               var rowComplete = true;
               for (col in Iter.range(0, TABLA_SIZE - 1)) {
-                if (not Array.find<Marca>(
-                  playerMarks, 
-                  func(m) { m.position.row == row and m.position.col == col }
-                ).isValid()) {
-                  rowComplete := false;
+
+                let obj = Array.find<T.Marca>(
+                    playerMarks, 
+                    func(m) { m.position.row == row and m.position.col == col }
+                );
+
+                switch(obj){
+                    case(?found){
+                        if (not found.isValid()) { // TODO there is no function to validate on here
+                            rowComplete := false;
+                        };
+                    };
+                    case (null){ }
                 };
               };
               
@@ -537,12 +545,20 @@ actor GameLogic {
               for (col in Iter.range(0, TABLA_SIZE - 1)) {
                 var colComplete = true;
                 for (row in Iter.range(0, TABLA_SIZE - 1)) {
-                  if (not Array.find<Marca>(
-                    playerMarks, 
-                    func(m) { m.position.row == row and m.position.col == col }
-                  ).isValid()) {
-                    colComplete := false;
-                  };
+
+                    let obj = Array.find<T.Marca>(
+                        playerMarks, 
+                        func(m) { m.position.row == row and m.position.col == col }
+                    );
+
+                    switch(obj){
+                        case(?found){
+                            if (not found.isValid()) { // TODO there is no function to validate on here
+                                colComplete := false;
+                            };
+                        };
+                        case (null){ }
+                    };
                 };
                 
                 if (colComplete) {
@@ -556,11 +572,19 @@ actor GameLogic {
               // Main diagonal
               var diagComplete = true;
               for (i in Iter.range(0, TABLA_SIZE - 1)) {
-                if (not Array.find<Marca>(
-                  playerMarks, 
-                  func(m) { m.position.row == i and m.position.col == i }
-                ).isValid()) {
-                  diagComplete := false;
+
+                let obj = Array.find<T.Marca>(
+                    playerMarks, 
+                    func(m) { m.position.row == i and m.position.col == i }
+                );
+
+                switch(obj){
+                    case(?found){
+                        if (not found.isValid()) { // TODO there is no function to validate on here
+                            diagComplete := false;
+                        };
+                    };
+                    case (null){ }
                 };
               };
               
@@ -571,11 +595,19 @@ actor GameLogic {
               // Other diagonal
               diagComplete := true;
               for (i in Iter.range(0, TABLA_SIZE - 1)) {
-                if (not Array.find<Marca>(
-                  playerMarks, 
-                  func(m) { m.position.row == i and m.position.col == (TABLA_SIZE - 1 - i) }
-                ).isValid()) {
-                  diagComplete := false;
+
+                let obj = Array.find<T.Marca>(
+                    playerMarks, 
+                     func(m) { m.position.row == i and m.position.col == (TABLA_SIZE - 1 - i) }
+                );
+
+                switch(obj){
+                    case(?found){
+                        if (not found.isValid()) { // TODO there is no function to validate on here
+                            diagComplete := false;
+                        };
+                    };
+                    case (null){ }
                 };
               };
               
@@ -590,11 +622,19 @@ actor GameLogic {
             var allMarked = true;
             for (row in Iter.range(0, TABLA_SIZE - 1)) {
               for (col in Iter.range(0, TABLA_SIZE - 1)) {
-                if (not Array.find<Marca>(
-                  playerMarks, 
-                  func(m) { m.position.row == row and m.position.col == col }
-                ).isValid()) {
-                  allMarked := false;
+
+                let obj = Array.find<T.Marca>(
+                    playerMarks, 
+                    func(m) { m.position.row == row and m.position.col == col }
+                );
+
+                switch(obj){
+                    case(?found){
+                        if (not found.isValid()) { // TODO there is no function to validate on here
+                            allMarked := false;
+                        };
+                    };
+                    case (null){ }
                 };
               };
             };
@@ -700,5 +740,23 @@ actor GameLogic {
   
   system func postupgrade() {
     gameEntries := [];
+  };
+
+  //Added by JB
+
+  private let eqNat = func(a : Nat, b : Nat) : Bool {
+    a == b;
+  };
+
+  private let hashNat = func(key : Nat) : Hash.Hash {
+    Nat32.fromNat(key % (2 ** 8 - 1));
+  };
+
+  private let eqNat32 = func(a : Nat32, b : Nat32) : Bool {
+    a == b;
+  };
+
+  private let hashNat32 = func(key : Nat32) : Hash.Hash {
+    Nat32.fromNat(Nat32.toNat(key) % (2 ** 32 - 1));
   };
 }
