@@ -1,5 +1,5 @@
 
-module AppTypes {
+module Types {
 // Types
   public type GameId = Nat32;
   public type PlayerId = Principal;
@@ -94,4 +94,75 @@ module AppTypes {
     winner: ?PlayerId;
     prizePool: Nat;
   };
+
+
+  public type OwnerId = Principal;
+  public type RenterId = Principal;
+  
+  // Rarity types
+  public type Rarity = {
+    #common;
+    #uncommon;
+    #rare;
+    #epic;
+    #legendary;
+  };
+  
+  
+  // Rental status
+  public type RentalStatus = {
+    #available;
+    #rented;
+    #burned;
+  };
+  
+  // Tabla NFT
+  public type Tabla = {
+    id: TablaId;
+    owner: OwnerId;
+    renter: ?RenterId;
+    gameId: ?GameId;
+    rentalFee: Nat;
+    tokenType: TokenType;
+    rarity: Rarity;
+    metadata: TablaMetadata;
+    rentalHistory: [RentalRecord];
+    status: RentalStatus;
+    createdAt: Int;
+    updatedAt: Int;
+  };
+  
+  // Tabla metadata
+  public type TablaMetadata = {
+    name: Text;
+    description: Text;
+    image: Text; // URL or IPFS hash
+    cards: [Nat]; // The IDs of cards on this tabla in row-major order
+  };
+  
+  // Rental record
+  public type RentalRecord = {
+    renter: RenterId;
+    gameId: ?GameId;
+    startTime: Int;
+    endTime: ?Int;
+    fee: Nat;
+    tokenType: TokenType;
+  };
+  
+  // Tabla info (public view)
+  public type TablaInfo = {
+    id: TablaId;
+    owner: OwnerId;
+    renter: ?RenterId;
+    gameId: ?GameId;
+    rentalFee: Nat;
+    tokenType: TokenType;
+    rarity: Rarity;
+    name: Text;
+    image: Text;
+    status: RentalStatus;
+    isAvailable: Bool;
+  };
+
 };
