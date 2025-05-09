@@ -1,22 +1,16 @@
 import Array "mo:base/Array";
-import Blob "mo:base/Blob";
 import Buffer "mo:base/Buffer";
-import Debug "mo:base/Debug";
 import HashMap "mo:base/HashMap";
 import Hash "mo:base/Hash";
 import Int "mo:base/Int";
 import Iter "mo:base/Iter";
-import List "mo:base/List";
 import Nat "mo:base/Nat";
-import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
-import Option "mo:base/Option";
 import Principal "mo:base/Principal";
-import Random "mo:base/Random";
 import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
-import Trie "mo:base/Trie";
+import Random "mo:base/Random";
 import Types "./types";
 import Constants "constants";
 import Utilities "utilities";
@@ -180,58 +174,75 @@ actor GameLogic {
   };
   
   // Join a game
-  public shared(msg) func joinGame(gameId: Types.GameId) : async Result.Result<(), Text> {
-    let caller = msg.caller;
-    
-    if (Principal.isAnonymous(caller)) {
-      return #err("Anonymous identity cannot join games");
-    };
-    
-    switch (games.get(gameId)) {
-      case (null) { #err("Game not found") };
-      case (?game) {
-        if (game.status != #lobby) {
-          return #err("Game is not in lobby state");
-        };
-        
-        if (game.players.size() >= MAX_PLAYERS_PER_GAME) {
-          return #err("Game is full");
-        };
-        
-        // Check if player is already in the game
-        for (player in game.players.vals()) {
-          if (Principal.equal(player, caller)) {
-            return #err("Player already in game");
-          };
-        };
-        
-        // Add player to the game
-        let updatedPlayers = Array.append<Types.PlayerId>(game.players, [caller]);
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = updatedPlayers;
-          tablas = game.tablas;
-          drawnCards = game.drawnCards;
-          currentCard = game.currentCard;
-          marcas = game.marcas;
-          winner = game.winner;
-          prizePool = game.prizePool + game.entryFee; // Add entry fee to prize pool
-        };
-        
-        games.put(gameId, updatedGame);
-        #ok(())
-      };
-    }
+public shared(msg) func joinGame(gameId: Types.GameId) : async Result.Result<(), Text> {
+  let caller = msg.caller;
+  
+  if (Principal.isAnonymous(caller)) {
+    return #err("Anonymous identity cannot join games");
   };
+  
+  switch (games.get(gameId)) {
+    case (null) { #err("Game not found") };
+    case (?game) {
+      if (game.status != #lobby) {
+        return #err("Game is not in lobby state");
+      };
+      
+      if (game.players.size() >= MAX_PLAYERS_PER_GAME) {
+        return #err("Game is full");
+      };
+      
+      // Check if player is already in the game
+      for (player in game.players.vals()) {
+        if (Principal.equal(player, caller)) {
+          return #err("Player already in game");
+        };
+      };
+      
+      // Verify payment (entry fee in ICP)
+      if (game.tokenType == #ICP) {
+        let paymentResult = await Ledger.transfer({
+          from = caller;
+          to = Principal.fromActor(GameLogic); // Canister principal
+          amount = { e8s = Nat64.fromNat(game.entryFee * 100_000_000) }; // Convert to e8s (1 ICP = 10^8 e8s)
+          fee = { e8s = 10_000 }; // Standard transaction fee
+          memo = 0;
+          created_at_time = ?{ timestamp_nanos = Nat64.fromNat(Int.abs(Time.now())) };
+        });
+        
+        switch (paymentResult) {
+          case (#Err(e)) { return #err("Payment failed: " # debug_show(e)) };
+          case (#Ok(_)) { /* Payment successful */ };
+        };
+      };
+      
+      // Add player to the game
+      let updatedPlayers = Array.append<Types.PlayerId>(game.players, [caller]);
+      
+      let updatedGame = {
+        id = game.id;
+        name = game.name;
+        host = game.host;
+        createdAt = game.createdAt;
+        status = game.status;
+        mode = game.mode;
+        tokenType = game.tokenType;
+        entryFee = game.entryFee;
+        hostFeePercent = game.hostFeePercent;
+        players = updatedPlayers;
+        tablas = game.tablas;
+        drawnCards = game.drawnCards;
+        currentCard = game.currentCard;
+        marcas = game.marcas;
+        winner = game.winner;
+        prizePool = game.prizePool + game.entryFee; // Add entry fee to prize pool
+      };
+      
+      games.put(gameId, updatedGame);
+      #ok(())
+    };
+  }
+};
   
   // Add tabla to player in a game
   public shared(msg) func addTablaToGame(gameId: Types.GameId, tablaId: Types.TablaId) : async Result.Result<(), Text> {
@@ -366,48 +377,53 @@ actor GameLogic {
           return #err("All cards have been drawn");
         };
         
-        // Use game ID and timestamp for pseudo-randomness
-        let seed = Nat32.toNat((Text.hash(Int.toText(Time.now())) + game.id)) % TOTAL_CARDS; 
-        
-        // Find a card that hasn't been drawn yet
-        var cardId : Types.CardId = Nat32.fromNat((seed % TOTAL_CARDS)) + 1;
+        // Generate a random card ID
+        let seed : Blob = "\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF";
+        let random = Random.Finite(seed);
+        var cardId : Types.CardId = 0;
         var attempts = 0;
         
-        // Keep trying until we find an undrawn card
-        while (Array.find<Types.CardId>(game.drawnCards, func(c) { c == cardId }) != null and attempts < TOTAL_CARDS) {
-          cardId := (cardId % Nat32.fromNat(TOTAL_CARDS)) + 1;
+        while (attempts < TOTAL_CARDS) {
+          let randNat = random.range(32); // Generate a random 32-bit number
+          switch(randNat){
+            case (?foundNat){
+              cardId := Nat32.fromNat(foundNat % TOTAL_CARDS) + 1;
+            };
+            case (null){}
+          };
+          
+          // Check if card is undrawn
+          if (Array.find<Types.CardId>(game.drawnCards, func(c) { c == cardId }) == null) {
+            // Found an undrawn card
+            let updatedDrawnCards = Array.append<Types.CardId>(game.drawnCards, [cardId]);
+            
+            let updatedGame = {
+              id = game.id;
+              name = game.name;
+              host = game.host;
+              createdAt = game.createdAt;
+              status = game.status;
+              mode = game.mode;
+              tokenType = game.tokenType;
+              entryFee = game.entryFee;
+              hostFeePercent = game.hostFeePercent;
+              players = game.players;
+              tablas = game.tablas;
+              drawnCards = updatedDrawnCards;
+              currentCard = ?cardId;
+              marcas = game.marcas;
+              winner = game.winner;
+              prizePool = game.prizePool;
+            };
+            
+            games.put(gameId, updatedGame);
+            return #ok(cardId);
+          };
+          
           attempts += 1;
         };
         
-        // Make sure we found an undrawn card
-        if (Array.find<Types.CardId>(game.drawnCards, func(c) { c == cardId }) != null) {
-          return #err("Could not find an undrawn card");
-        };
-        
-        // Update the game with the new card
-        let updatedDrawnCards = Array.append<Types.CardId>(game.drawnCards, [cardId]);
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = game.players;
-          tablas = game.tablas;
-          drawnCards = updatedDrawnCards;
-          currentCard = ?cardId;
-          marcas = game.marcas;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        };
-        
-        games.put(gameId, updatedGame);
-        #ok(cardId)
+        #err("Could not find an undrawn card")
       };
     }
   };
