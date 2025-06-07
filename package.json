@@ -1,57 +1,57 @@
 {
-  "name": "crypto-loteria",
+  "name": "nft_loteria_frontend",
   "version": "0.1.0",
-  "description": "Crypto-themed Lotería game running on the Internet Computer",
+  "private": true,
+  "description": "NFTLoteria",
+  "keywords": [
+    "NFTLoteria"
+  ],
   "scripts": {
-    "build": "webpack",
-    "start": "webpack serve --mode development --env development",
-    "deploy:local": "dfx deploy --network=local",
-    "deploy:ic": "dfx deploy --network=ic",
-    "generate": "dfx generate"
-  },
-  "dependencies": {
-    "@dfinity/agent": "^0.15.1",
-    "@dfinity/auth-client": "^0.15.1",
-    "@dfinity/candid": "^0.15.1",
-    "@dfinity/principal": "^0.15.1",
-    "lucide-react": "^0.216.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.10.0"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "lint": "prettier --plugin-search-dir . --check . && eslint .",
+    "format": "prettier --plugin-search-dir . --write .",
+    "prebuild": "npm run generate",
+    "generate": "dfx generate && node ./update.types.mjs && npm run format"
   },
   "devDependencies": {
-    "@babel/core": "^7.21.4",
-    "@babel/preset-env": "^7.21.4",
-    "@babel/preset-react": "^7.18.6",
-    "assert": "2.0.0",
-    "autoprefixer": "^10.4.14",
-    "babel-loader": "^9.1.2",
-    "buffer": "6.0.3",
-    "copy-webpack-plugin": "^11.0.0",
-    "css-loader": "^6.7.3",
-    "dotenv-webpack": "^8.0.1",
-    "events": "3.3.0",
-    "file-loader": "^6.2.0",
-    "html-webpack-plugin": "5.5.0",
-    "postcss": "^8.4.21",
-    "postcss-loader": "^7.2.4",
-    "process": "0.11.10",
-    "stream-browserify": "3.0.0",
-    "style-loader": "^3.3.2",
-    "tailwindcss": "^3.3.1",
-    "terser-webpack-plugin": "^5.3.7",
-    "util": "0.12.5",
-    "webpack": "^5.78.0",
-    "webpack-cli": "^5.0.1",
-    "webpack-dev-server": "^4.13.2"
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@rollup/plugin-inject": "^5.0.5",
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.15.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.4",
+    "@types/node": "^20.10.2",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "@typescript-eslint/parser": "^6.9.0",
+    "autoprefixer": "^10.4.16",
+    "eslint-config-prettier": "^9.0.0",
+    "sass": "^1.69.5",
+    "svelte": "^5.15.0",
+    "svelte-check": "^4.0.5",
+    "svelte-preprocess": "^6.0.3",
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.4.11"
   },
-  "engines": {
-    "node": "^12 || ^14 || ^16 || ^18"
-  },
-  "browserslist": [
-    "last 2 chrome version",
-    "last 2 firefox version",
-    "last 2 safari version",
-    "last 2 edge version"
-  ]
+  "type": "module",
+  "dependencies": {
+    "@dfinity/agent": "^2.3.0",
+    "@dfinity/auth-client": "^2.3.0",
+    "@dfinity/candid": "^2.3.0",
+    "@dfinity/nns": "^7.0.1",
+    "@dfinity/nns-proto": "^2.0.1",
+    "@dfinity/principal": "^2.3.0",
+    "@dfinity/sns": "^3.2.2",
+    "@dfinity/utils": "^2.5.2",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "dompurify": "^3.1.7",
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.24.0",
+    "postcss": "^8.4.47",
+    "svelte-flag-icons": "^1.0.3",
+    "tailwindcss": "^3.4.14"
+  }
 }

@@ -1,10 +1,7 @@
+import Ids "ids";
+import Enums "enums";
 
 module Types {
-// Types
-  public type GameId = Nat32;
-  public type PlayerId = Principal;
-  public type TablaId = Nat32;
-  public type CardId = Nat32;
 
   // Card positions in tabla
   public type Position = {
@@ -12,122 +9,54 @@ module Types {
     col: Nat;
   };
 
-  // Game status
-  public type GameStatus = {
-    #lobby;    // Players can join
-    #active;   // Game in progress
-    #completed; // Game finished
-  };
-
-  // Game mode
-  public type GameMode = {
-    #line;     // Win by completing a line, row, or diagonal
-    #blackout; // Win by marking all positions
-  };
-
-  // Token type
-  public type TokenType = {
-    #ICP;
-    #ckBTC;
-  };
-
   // Marca (player mark on a tabla)
   public type Marca = {
-    playerId: PlayerId;
-    tablaId: TablaId;
+    playerId: Ids.PlayerId;
+    tablaId: Ids.TablaId;
     position: Position;
     timestamp: Int;
   };
 
   // Win claim
   public type WinClaim = {
-    playerId: PlayerId;
-    tablaId: TablaId;
+    playerId: Ids.PlayerId;
+    tablaId: Ids.TablaId;
     positions: [Position];
     timestamp: Int;
   };
 
   // Game
   public type Game = {
-    id: GameId;
+    id: Ids.GameId;
     name: Text;
-    host: PlayerId;
+    host: Ids.PlayerId;
     createdAt: Int;
-    status: GameStatus;
-    mode: GameMode;
-    tokenType: TokenType;
+    status: Enums.GameStatus;
+    mode: Enums.GameMode;
+    tokenType: Enums.TokenType;
     entryFee: Nat;
     hostFeePercent: Nat;
-    players: [PlayerId];
-    tablas: [(PlayerId, TablaId)]; // Tracks which tablas are used by which players
-    drawnCards: [CardId];
-    currentCard: ?CardId;
+    players: [Ids.PlayerId];
+    tablas: [(Ids.PlayerId, Ids.TablaId)]; // Tracks which tablas are used by which players
+    drawnCards: [Ids.CardId];
+    currentCard: ?Ids.CardId;
     marcas: [Marca];
-    winner: ?PlayerId;
+    winner: ?Ids.PlayerId;
     prizePool: Nat;
-  };
-
-  // Game creation parameters
-  public type GameParams = {
-    name: Text;
-    mode: GameMode;
-    tokenType: TokenType;
-    entryFee: Nat;
-    hostFeePercent: Nat;
-  };
-
-  // Game info (public view)
-  public type GameInfo = {
-    id: GameId;
-    name: Text;
-    host: PlayerId;
-    createdAt: Int;
-    status: GameStatus;
-    mode: GameMode;
-    tokenType: TokenType;
-    entryFee: Nat;
-    hostFeePercent: Nat;
-    playerCount: Nat;
-    maxPlayers: Nat;
-    drawnCardCount: Nat;
-    currentCard: ?CardId;
-    winner: ?PlayerId;
-    prizePool: Nat;
-  };
-
-
-  public type OwnerId = Principal;
-  public type RenterId = Principal;
-  
-  // Rarity types
-  public type Rarity = {
-    #common;
-    #uncommon;
-    #rare;
-    #epic;
-    #legendary;
-  };
-  
-  
-  // Rental status
-  public type RentalStatus = {
-    #available;
-    #rented;
-    #burned;
   };
   
   // Tabla NFT
   public type Tabla = {
-    id: TablaId;
-    owner: OwnerId;
-    renter: ?RenterId;
-    gameId: ?GameId;
+    id: Ids.TablaId;
+    owner: Ids.OwnerId;
+    renter: ?Ids.RenterId;
+    gameId: ?Ids.GameId;
     rentalFee: Nat;
-    tokenType: TokenType;
-    rarity: Rarity;
+    tokenType: Enums.TokenType;
+    rarity: Enums.Rarity;
     metadata: TablaMetadata;
     rentalHistory: [RentalRecord];
-    status: RentalStatus;
+    status: Enums.RentalStatus;
     createdAt: Int;
     updatedAt: Int;
   };
@@ -142,26 +71,26 @@ module Types {
   
   // Rental record
   public type RentalRecord = {
-    renter: RenterId;
-    gameId: ?GameId;
+    renter: Ids.RenterId;
+    gameId: ?Ids.GameId;
     startTime: Int;
     endTime: ?Int;
     fee: Nat;
-    tokenType: TokenType;
+    tokenType: Enums.TokenType;
   };
   
   // Tabla info (public view)
   public type TablaInfo = {
-    id: TablaId;
-    owner: OwnerId;
-    renter: ?RenterId;
-    gameId: ?GameId;
+    id: Ids.TablaId;
+    owner: Ids.OwnerId;
+    renter: ?Ids.RenterId;
+    gameId: ?Ids.GameId;
     rentalFee: Nat;
-    tokenType: TokenType;
-    rarity: Rarity;
+    tokenType: Enums.TokenType;
+    rarity: Enums.Rarity;
     name: Text;
     image: Text;
-    status: RentalStatus;
+    status: Enums.RentalStatus;
     isAvailable: Bool;
   };
 
