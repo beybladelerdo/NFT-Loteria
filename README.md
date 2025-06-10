@@ -1,3 +1,3 @@
-# nft-loteria
+# btc-bingo
 
-NFT Loteria
+BTC Bingo
