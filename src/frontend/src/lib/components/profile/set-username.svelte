@@ -1,7 +1,7 @@
 <script lang="ts">
     import { isUsernameValid } from "$lib/utils/helpers";
     import { userStore } from "$lib/stores/user-store";
-    import FullScreenSpinner from "../shared/global/full-screen-spinner.svelte";
+    import Spinner from "../shared/global/spinner.svelte";
     import { goto } from "$app/navigation";
 
     interface Props {
@@ -56,7 +56,7 @@
 </script>
 
 {#if isLoading}
-    <FullScreenSpinner />
+    <Spinner />
 {:else}
     <div class="flex flex-col items-center justify-center min-h-screen px-4 py-12 font-mono bg-BrandBackground text-BrandText">
         <div class="w-full max-w-md p-8 space-y-6 border rounded-lg shadow-lg bg-BrandSurface border-BrandBorder">

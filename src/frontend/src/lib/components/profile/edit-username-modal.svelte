@@ -1,7 +1,7 @@
 <script lang="ts">
     import { isUsernameValid } from "$lib/utils/helpers";
     import { userStore } from "$lib/stores/user-store";
-    import FullScreenSpinner from "../shared/global/full-screen-spinner.svelte";
+    import Spinner from "../shared/global/spinner.svelte";
     import Modal from "../shared/global/modal.svelte";
 
     interface Props {
@@ -56,7 +56,7 @@
 
 <Modal title="Update Username" {onClose}>
     {#if isLoading}
-        <FullScreenSpinner />
+        <Spinner />
     {:else}
         <form onsubmit={saveUsername} class="space-y-6">
             <div class="p-4 mb-4 border rounded-lg bg-BrandSurface border-BrandBorder">

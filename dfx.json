@@ -7,9 +7,9 @@
     "frontend": {
       "dependencies": ["backend"],
       "frontend": {
-        "entrypoint": "src/frontend/src/index.html"
+        "entrypoint": "build/index.html"
       },
-      "source": ["src/frontend/assets", "dist/frontend/"],
+      "source": ["build/"],
       "type": "assets"
     }
   },

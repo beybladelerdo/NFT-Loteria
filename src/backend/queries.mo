@@ -50,5 +50,9 @@ module Queries {
         public type DrawHistory = {
                 cardsDrawn: [Ids.CardId]
         };
+
+        public type Profile = {
+
+        };
         
 }

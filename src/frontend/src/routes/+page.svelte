@@ -2,16 +2,14 @@
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth-store';
 
-  async function handleGetStarted() {
-    if (authStore.value.isAuthenticated) {
-      goto('/dashboard');
-    } else {
-      await authStore.signIn({ domain: 'ic0.app' });
-      if (authStore.value.isAuthenticated) {
-        goto('/dashboard');
-      }
-    }
+  async function hostGame() {
+   
   }
+
+  async function joinGame() {
+    
+  }
+
 </script>
 
 <div class="flex flex-col min-h-screen bg-gradient-to-br from-purple-900 via-fuchsia-800 to-orange-600">
@@ -34,7 +32,7 @@
             Create your own Lotería game, set entry fees, and invite friends to play.
           </p>
           <button 
-            onclick={handleGetStarted}
+            onclick={hostGame}
             class="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-full flex items-center justify-center mx-auto transition"
           >
             Host Game <!--<ArrowRight size={18} class="ml-2" />-->
@@ -48,7 +46,7 @@
             Browse open games, rent an NFT tabla, and try your luck at winning prizes.
           </p>
           <button 
-            onclick={handleGetStarted}
+            onclick={joinGame}
             class="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-full flex items-center justify-center mx-auto transition"
           >
             Join Game <!--<ArrowRight size={18} class="ml-2" />-->

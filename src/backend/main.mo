@@ -25,8 +25,15 @@ import Queries "queries";
 actor GameLogic {
   
   private stable var games: [Types.Game] = [];
+  private stable var profiles: [Types.Profile] = [];
   
 
+  /* ----- Profile Queries ----- */
+
+  public query func getProfile() : async Result.Result<Queries.Profile, Enums.Error> {
+    return #err(#NotFound);
+  };
+ 
   /* ----- Game Queries ----- */
 
   public query func getOpenGames(dto: Queries.GetOpenGames) : async Result.Result<Queries.OpenGames, Enums.Error> {

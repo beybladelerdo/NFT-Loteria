@@ -1,24 +1,6 @@
-<script lang="ts">
-  import LoadingDots from "./loading-dots.svelte";
-
-  interface Props {
-    message: string | undefined
-  }
-
-  let { message } : Props = $props();
-</script>
-
 <div class="widget">
   <div class="widget-content">
     <div class="widget-spinner"></div>
-    {#if message}
-      <div class="message-row">
-        <p class="loading-text">{message}</p>
-        <div class="dots-container">
-          <LoadingDots />
-        </div>
-      </div>
-    {/if}
   </div>
 </div>
 
@@ -49,27 +31,6 @@
     width: 50px;
     height: 50px;
     animation: spin 1s linear infinite;
-  }
-
-  .message-row {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-top: 1rem;
-  }
-
-  .loading-text {
-    color: white;
-    font-size: 1.125rem;
-    text-align: center;
-  }
-
-  .dots-container { 
-    color: white;
-    font-size: 1.125rem;
-    display: flex;
-    align-items: center;
-    padding-top: 2px;
   }
 
   @keyframes spin {

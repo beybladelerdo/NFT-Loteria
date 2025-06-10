@@ -1,6 +1,5 @@
 <script lang="ts">
     import MenuIcon from "$lib/icons/MenuIcon.svelte";
-    import ChatIcon from "$lib/icons/ChatIcon.svelte";
     
   interface Props {
     toggleMenu: () => void;
@@ -15,13 +14,7 @@
 </script>
 
 <header class="z-30 flex items-center justify-between h-16 px-6 text-white shadow-md bg-BrandBlack/90">
-  <a 
-    href="/" 
-    class="flex items-center space-x-2 transition-transform hover:scale-105"
-  >
-    <ChatIcon className="w-6 h-6" fill="white" />
-  </a>
-
+  
   <div class="flex items-center gap-4">
     <button
       onclick={handleMenuClick}

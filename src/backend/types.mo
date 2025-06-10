@@ -1,7 +1,13 @@
 import Ids "ids";
 import Enums "enums";
+import BaseIds "mo:waterway-mops/base/ids";
 
 module Types {
+
+  public type Profile = {
+    principalId: BaseIds.PrincipalId;
+    username: Text;
+  };
 
   // Card positions in tabla
   public type Position = {
