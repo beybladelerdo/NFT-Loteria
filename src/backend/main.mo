@@ -22,10 +22,10 @@ import Ids "ids";
 import Commands "commands";
 import Queries "queries";
 
-actor GameLogic {
+persistent actor GameLogic {
   
-  private stable var games: [Types.Game] = [];
-  private stable var profiles: [Types.Profile] = [];
+  private var games: [Types.Game] = [];
+  private var profiles: [Types.Profile] = [];
   
 
   /* ----- Profile Queries ----- */

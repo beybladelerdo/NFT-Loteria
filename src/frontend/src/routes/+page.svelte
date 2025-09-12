@@ -1,14 +1,12 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { authStore } from '$lib/stores/auth-store';
+  
 
-  async function hostGame() {
-   
-  }
+  const hostGame = () => goto('/host-game');
+  const joinGame = () => goto('/join-game');
 
-  async function joinGame() {
-    
-  }
+  const currentYear = new Date().getFullYear();
 
 </script>
 
@@ -71,7 +69,7 @@
     </div>
   </main>
   
-  <footer class="bg-black bg-opacity-50 text-white text-center py-4">
-    <p>© 2023 Crypto Lotería. Built on the Internet Computer Protocol.</p>
+  <footer class="text-white text-center py-4">
+    <p>© {currentYear} NFT Lotería. Built on the Internet Computer Protocol.</p>
   </footer>
 </div>
