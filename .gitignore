@@ -12,7 +12,8 @@
 
 # generated files
 src/declarations/
-
+src/frontend/src/lib/assets/Cards
+src/frontend/src/lib/assets/Tablas
 # frontend code
 node_modules/
 dist/

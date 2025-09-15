@@ -8,6 +8,9 @@ export default {
         "loteria-secondary": "#EC4899",
         "loteria-accent": "#F97316",
       },
+      fontFamily: {
+        'freigeist': ['FreigeistXCon'],
+      },
       animation: {
         "card-draw": "cardDraw 0.5s ease-out",
         "win-pulse": "winPulse 2s infinite",

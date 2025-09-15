@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, type Snippet } from "svelte"; 
+  import { onMount, type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { browser } from "$app/environment";
   import { initAuthWorker } from "$lib/services/worker.auth.services";
@@ -9,7 +9,7 @@
   import { userStore } from "$lib/stores/user-store";
   import type { Profile } from "../../../../declarations/backend/backend.did";
   import SetUsername from "$lib/components/profile/set-username.svelte";
-  
+
   import Connect from "$lib/components/profile/connect.svelte";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import Toasts from "$lib/components/shared/toasts/toasts.svelte";
@@ -18,10 +18,12 @@
   import Sidebar from "$lib/shared/sidebar.svelte";
 
   import "../../app.css";
-  
-  interface Props { children: Snippet }
+
+  interface Props {
+    children: Snippet;
+  }
   let { children }: Props = $props();
-    
+
   let worker: { syncAuthIdle: (auth: AuthStoreData) => void } | undefined;
   let isLoading = $state(true);
   let isMenuOpen = $state(false);
@@ -36,7 +38,7 @@
 
   onMount(async () => {
     if (browser) {
-      document.querySelector('#app-spinner')?.remove();
+      document.querySelector("#app-spinner")?.remove();
     }
     await init();
     worker = await initAuthWorker();
@@ -46,34 +48,32 @@
     }
     isLoading = false;
   });
-  
+
   function toggleMenu() {
     isMenuOpen = !isMenuOpen;
   }
 
-  
-	$effect(() => {
-    if($authSignedInStore){
+  $effect(() => {
+    if ($authSignedInStore) {
       checkProfile();
     }
-	});
+  });
 
-  async function checkProfile(){
+  async function checkProfile() {
     try {
       isLoading = true;
       user = await userStore.getProfile();
       hasProfile = user != undefined;
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.error("Error fetching profile:", err);
     } finally {
       isLoading = false;
     }
   }
 
-  async function userCreated(){
+  async function userCreated() {
     checkProfile();
   }
-
 </script>
 
 <svelte:window on:storage={authStore.sync} />
@@ -82,17 +82,15 @@
   <div in:fade>
     <Spinner />
   </div>
-{:else}
-  {#if $authSignedInStore}
-    <Header {toggleMenu} />
-    <Sidebar {toggleMenu} {isMenuOpen} {hasProfile} />
-    {#if !user}
-      <SetUsername {userCreated} />
-    {:else}
-      {@render children()}
-    {/if}
-    <Toasts />
+{:else if $authSignedInStore}
+  <Header {toggleMenu} />
+  <Sidebar {toggleMenu} {isMenuOpen} {hasProfile} />
+  {#if !user}
+    <SetUsername {userCreated} />
   {:else}
-    <Connect />
+    {@render children()}
   {/if}
+  <Toasts />
+{:else}
+  <Connect />
 {/if}

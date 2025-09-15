@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
 
-    <title>BTC Bingo</title>
+    <title>NFT Loteria</title>
     <link href="https://btcbingo.fun" rel="canonical" />
     <meta content="BTC Bingo" name="description" />
     <meta content="BTC Bingo" property="og:title" />
@@ -59,12 +59,54 @@
     <meta content="#1a1a1d" name="theme-color" />
 
     <link
-      rel="preload"
-      href="/ShareTechMono-Regular.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-LightItalic.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-Light.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-Regular.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-MediumItalic.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-Bold.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-BoldItalic.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
+<link
+  rel="preload"
+  href="%sveltekit.assets%/FreigeistXCon-Black.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin="anonymous"
+/>
     %sveltekit.head%
 
     <style>
@@ -83,13 +125,60 @@
       }
 
       @font-face {
-        font-display: swap;
-        font-family: "ShareTechMono";
-        font-style: normal;
-        font-weight: 400;
-        src: url("%sveltekit.assets%/ShareTechMono-Regular.woff2")
-          format("woff2");
-      }
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-LightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-MediumItalic.woff2') format('woff2');
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-BoldItalic.woff2') format('woff2');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'FreigeistXCon';
+  src: url('%sveltekit.assets%/FreigeistXCon-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
       #app-spinner {
         --spinner-size: 30px;
