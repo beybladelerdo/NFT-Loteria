@@ -1,147 +1,180 @@
-import Array "mo:base/Array";
-import Buffer "mo:base/Buffer";
-import HashMap "mo:base/HashMap";
-import Hash "mo:base/Hash";
-import Int "mo:base/Int";
-import Iter "mo:base/Iter";
-import Nat "mo:base/Nat";
-import Nat32 "mo:base/Nat32";
-import Principal "mo:base/Principal";
-import Result "mo:base/Result";
-import Text "mo:base/Text";
-import Time "mo:base/Time";
-import Random "mo:base/Random";
-import Nat64 "mo:base/Nat64";
+import Nat "mo:core/Nat";
+import Principal "mo:core/Principal";
+import PRNG "mo:core/internal/PRNG";
+import Text  "mo:core/Text";
+import Nat64 "mo:core/Nat64";
+import Int "mo:core/Int";
+import Time "mo:core/Time";
+import Result "mo:core/Result";
 import Types "./types";
 import Constants "constants";
 import Utilities "utilities";
 import Ledger "mo:waterway-mops/base/def/icp-ledger";
 import Account "mo:waterway-mops/base/def/account";
 import Enums "mo:waterway-mops/base/enums";
+import Map "mo:core/Map";
+import List "mo:core/List";
 import Ids "ids";
 import Commands "commands";
 import Queries "queries";
 
 persistent actor GameLogic {
-  
-  private var games: [Types.Game] = [];
-  private var profiles: [Types.Profile] = [];
-  
 
-  /* ----- Profile Queries ----- */
+  private var games = Map.empty<Text, Types.Game>() ;
+  private var profiles = Map.empty<Principal, Types.Profile>() ;
+  private var tags = Map.empty<Text, Principal>() ;
 
-  public query func getProfile() : async Result.Result<Queries.Profile, Enums.Error> {
-    return #err(#NotFound);
+  let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  let digits  = Text.toArray("0123456789");
+  transient let rng = PRNG.sfc64a();
+  rng.init(Nat64.fromIntWrap(Time.now()));
+
+  func pick(arr : [Char], bound : Nat64) : Char {
+    let idx = Nat64.toNat(Nat64.rem(rng.next(), bound));
+    arr[idx];
   };
- 
+  func genGameId() : Text {
+    var out : [var Char] = [var ' ', ' ', ' ', ' ', ' ', ' '];
+    let b26 : Nat64 = 26;
+    let b10 : Nat64 = 10;
+    var i = 0;
+      while (i < 6) {
+        if (Nat64.rem(rng.next(), 2) == 0) {
+          out[i] := pick(letters, b26);
+        } else {
+          out[i] := pick(digits, b10);
+        };
+        i += 1;
+      };
+      Text.fromVarArray(out)
+    };
+
+  func toGameView(g : Types.Game) : Queries.GameView = {
+    id = g.id;
+    name = g.name;
+    host = g.host;
+    createdAt = g.createdAt;
+    status = g.status;
+    mode = g.mode;
+    tokenType = g.tokenType;
+    entryFee = g.entryFee;
+    hostFeePercent = g.hostFeePercent;
+    playerCount = g.players.size();
+    maxPlayers = 50;
+    drawnCardCount = g.drawnCards.size();
+    currentCard = g.currentCard;
+    winner = g.winner;
+    prizePool = g.prizePool;
+  };
+
+  public query({caller}) func getProfile() : async Result.Result<Types.Profile, Text> {
+    switch (Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)){
+      case null {#err("no profile found")};
+      case (?profile) {#ok(profile)}
+    }
+  };
+  public shared({caller}) func createProfile(tag : Text) : async Result.Result<(),Text>{
+   switch(Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)){
+    case null {
+      Map.add<Principal, Types.Profile>(
+        profiles,
+        Principal.compare,
+        caller,
+        {
+          principalId = Principal.toText(caller);
+          username = tag;
+          games = 0;
+          wins = 0;
+          winRate = 0.00;
+        }
+      );
+      Map.add<Text,Principal>(tags, Text.compare, tag, caller);
+      #ok();
+    };
+      case _existing {#err("Profile Already exists")};
+    }
+  };
+
+  public shared ({ caller }) func updateTag(newTag : Text) : async Result.Result<(), Text> {
+  switch (Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)) {
+    case null { return #err("no profile found") };
+    case (?prof) {
+      let old = prof.username;
+      switch (Map.get<Text, Principal>(tags, Text.compare, newTag)) {
+        case (?owner) { if (owner != caller) return #err("username taken") };
+        case null {};
+      };
+      if (old == newTag) return #ok(());
+      ignore Map.take<Text, Principal>(tags, Text.compare, old);
+      Map.add<Text, Principal>(tags, Text.compare, newTag, caller);
+      Map.add<Principal, Types.Profile>(profiles, Principal.compare, caller, { prof with username = newTag });
+      return #ok(());
+    }
+  }
+};
+
   /* ----- Game Queries ----- */
 
-  public query func getOpenGames(dto: Queries.GetOpenGames) : async Result.Result<Queries.OpenGames, Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let openGames = Array.filter<Types.Game>(games, func(game: Types.Game) {
-      game.status == #lobby
-    });
+  public query func getOpenGames(dto : Queries.GetOpenGames): async Result.Result<Queries.OpenGames, Text> {
+  let start = dto.page * Constants.PAGE_COUNT;
 
-    let paginatedOpenGames = Array.map<Types.GameInfo, Queries.OpenGame>(openGames, func(game: Types.GameInfo){
-      return {
+  var matched : Nat = 0;
+  let out = List.empty<Queries.GameView>();
 
+  label scan for (g in Map.values(games)) {
+    if (g.status == #lobby) {
+      if (matched >= start and List.size(out) < Constants.PAGE_COUNT) {
+        List.add<Queries.GameView>(out, toGameView(g));
+        if (List.size(out) == Constants.PAGE_COUNT) break scan;
       };
-    });
-
-    return {
-      page: dto.page;
-      openGames: paginatedOpenGames;
-    }
-    */
-  };
-  
-  public query func getActiveGames(dto: Queries.GetActiveGames) : async Result.Result<Queries.ActiveGames, Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let activeGames = Buffer.Buffer<Types.GameInfo>(10);
-    
-    for ((id, game) in games.entries()) {
-      if (game.status == #active) {
-        activeGames.add({
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          playerCount = game.players.size();
-          maxPlayers = MAX_PLAYERS_PER_GAME;
-          drawnCardCount = game.drawnCards.size();
-          currentCard = game.currentCard;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        });
-      }
+      matched += 1;
     };
-    
-    Buffer.toArray(activeGames)
-    */
+  };
+    #ok({ page = dto.page; openGames = List.toArray(out) })
   };
 
-  public query func getGame(dto: Queries.GetGame) : async Result.Result<?Queries.Game, Enums.Error> {
-    return #err(#NotFound);
-    /*
-    switch (games.get(gameId)) {
-      case (null) { null };
-      case (?game) {
-        ?{
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          playerCount = game.players.size();
-          maxPlayers = MAX_PLAYERS_PER_GAME;
-          drawnCardCount = game.drawnCards.size();
-          currentCard = game.currentCard;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        }
+  public query func getActiveGames(dto: Queries.GetActiveGames) : async Result.Result<Queries.ActiveGames, Enums.Error> {
+   let start = dto.page * Constants.PAGE_COUNT;
+
+  var matched : Nat = 0;
+  let out = List.empty<Queries.GameView>();
+
+  label scan for (g in Map.values(games)) {
+    if (g.status == #active) {
+      if (matched >= start and List.size(out) < Constants.PAGE_COUNT) {
+        List.add<Queries.GameView>(out, toGameView(g));
+        if (List.size(out) == Constants.PAGE_COUNT) break scan;
       };
+      matched += 1;
+    };
+  };
+
+  #ok({ page = dto.page; activeGames = List.toArray(out) })
+  };
+
+  public query func getGame(dto: Queries.GetGame) : async Result.Result<?Queries.GameView, Text> {
+    switch (Map.get<Text, Types.Game>(games, Text.compare, dto.gameId)){
+      case null {#err("No Game found")};
+      case (?g) {#ok(?toGameView(g))};
     }
-    */
   };
   
-  public query func getDrawHistory(dto: Queries.GetDrawHistory) : async Result.Result<[Ids.CardId], Enums.Error> {
-    return #err(#NotFound);
-    /*
-    switch (games.get(gameId)) {
-      case (null) { #err("Game not found") };
-      case (?game) {
-        #ok(game.drawnCards)
-      };
+  public query func getDrawHistory(dto: Queries.GetDrawHistory) : async Result.Result<[Ids.CardId], Text> {
+    switch(Map.get<Text,Types.Game>(games, Text.compare, dto.gameId)){
+      case null {#err("No Game found")};
+      case (?g) {#ok(g.drawnCards)};
     }
-    */
   };
 
 
-  /* ----- Game Commands ----- */
+  public shared({caller}) func createGame(params: Commands.CreateGame) : async Result.Result<Text, Text> {
 
-  public shared(msg) func createGame(params: Commands.CreateGame) : async Result.Result<Ids.GameId, Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let nextGameId = getNextGameId();
-    
-    let caller = msg.caller;
-    
+    let nextGameId = genGameId();
+
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot create games");
     };
-    
-    // Validate params
+
     if (params.hostFeePercent > 20) {
       return #err("Host fee cannot exceed 20%");
     };
@@ -169,54 +202,55 @@ persistent actor GameLogic {
       prizePool = 0;
     };
 
-    let gamesBuffer = Buffer.fromArray<Types.Game>(games);
-    gamesBuffer.add(newGame);
-    games := Buffer.toArray(gamesBuffer);
-    
+    Map.add<Text,Types.Game>(games, Text.compare, nextGameId, newGame);
     #ok(newGame.id)
-    */
   };
-  
-  public shared(msg) func joinGame(dto: Commands.JoinGame) : async Result.Result<(), Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let caller = msg.caller;
-    
+
+  public shared({caller}) func joinGame(dto: Commands.JoinGame) : async Result.Result<(), Text> {
+
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot join games");
     };
     
-    switch (games.get(dto.gameId)) {
+    switch (Map.get<Text,Types.Game>(games, Text.compare, dto.gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
         if (game.status != #lobby) {
           return #err("Game is not in lobby state");
         };
         
-        if (game.players.size() >= MAX_PLAYERS_PER_GAME) {
+        if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) {
           return #err("Game is full");
         };
-        
-        // Check if player is already in the game
+        for ((_,tabla_Id) in game.tablas.values()) {
+          if (tabla_Id == dto.rentedTablaId){
+            return #err("Tabla is already in use in the game");
+          } else {
+            let tablalist = List.fromArray<(Ids.PlayerId, Ids.TablaId)>(game.tablas);
+            List.add<(Ids.PlayerId, Ids.TablaId)>(tablalist, (caller,tabla_Id));
+            let updatedTablas = List.toArray(tablalist);
+            ignore Map.replace<Text,Types.Game>(games, Text.compare, dto.gameId, {game with tablas = updatedTablas});
+          }
+        };
         for (player in game.players.vals()) {
           if (Principal.equal(player, caller)) {
             return #err("Player already in game");
           };
         };
-        
-        // Verify payment (entry fee in ICP)
+
+
         if (game.tokenType == #ICP) {
           let ledger : Ledger.Interface = actor("ryjl3-tyaaa-aaaaa-aaaba-cai");
 
           let paymentResult = await ledger.transfer({
             from_subaccount = ?Account.principalToSubaccount(caller);
-            to = Principal.toBlob(Principal.fromActor(GameLogic)); // Canister principal
-            amount = { e8s = Nat64.fromNat(game.entryFee * 100_000_000) }; // Convert to e8s (1 ICP = 10^8 e8s)
+            to = Principal.toBlob(Principal.fromActor(GameLogic));
+            amount = { e8s = Nat64.fromNat(game.entryFee * 100_000_000) };
             fee = { e8s = 10_000 }; // Standard transaction fee
             memo = 0;
             created_at_time = ?{ timestamp_nanos = Nat64.fromNat(Int.abs(Time.now())) };
           });
-          
+
           switch (paymentResult) {
             case (#Err(e)) { return #err("Payment failed: " # debug_show(e)) };
             case (#Ok(_)) {  };
@@ -224,35 +258,17 @@ persistent actor GameLogic {
         };
         
         // Add player to the game
-        let updatedPlayers = Array.append<Ids.PlayerId>(game.players, [caller]);
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = updatedPlayers;
-          tablas = game.tablas;
-          drawnCards = game.drawnCards;
-          currentCard = game.currentCard;
-          marcas = game.marcas;
-          winner = game.winner;
-          prizePool = game.prizePool + game.entryFee; // Add entry fee to prize pool
-        };
-        
-        games.put(gameId, updatedGame);
+        let playerlist = List.fromArray<Ids.PlayerId>(game.players);
+        List.add<Ids.PlayerId>(playerlist, caller);
+        let updatedPlayers = List.toArray(playerlist);
+
+        ignore Map.replace<Text,Types.Game>(games, Text.compare, dto.gameId, {game with players = updatedPlayers; prizePool = game.prizePool + game.entryFee; });
         #ok(())
       };
     }
-    */
   };
   
-  public shared(msg) func addTablaToGame(gameId: Ids.GameId, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func addTablaToGame(gameId: Text, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -324,7 +340,7 @@ persistent actor GameLogic {
     */
   };
   
-  public shared(msg) func startGame(gameId: Ids.GameId) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func startGame(gameId: Text) : async Result.Result<(), Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -370,7 +386,7 @@ persistent actor GameLogic {
     */
   };
   
-  public shared(msg) func drawCard(gameId: Ids.GameId) : async Result.Result<Ids.CardId, Enums.Error> {
+  public shared(msg) func drawCard(gameId: Text) : async Result.Result<Ids.CardId, Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -442,7 +458,7 @@ persistent actor GameLogic {
     */
   };
   
-  public shared(msg) func markPosition(gameId: Ids.GameId, tablaId: Ids.TablaId, position: Types.Position) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func markPosition(gameId: Text, tablaId: Ids.TablaId, position: Types.Position) : async Result.Result<(), Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -520,7 +536,7 @@ persistent actor GameLogic {
     */
   };
   
-  public shared(msg) func claimWin(gameId: Ids.GameId, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func claimWin(gameId: Text, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -722,7 +738,7 @@ persistent actor GameLogic {
     */
   };
   
-  public shared(msg) func endGame(gameId: Ids.GameId) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func endGame(gameId: Text) : async Result.Result<(), Enums.Error> {
     return #err(#NotFound);
     /*
     let caller = msg.caller;
@@ -872,23 +888,9 @@ persistent actor GameLogic {
     */
   };
 
-
-  /* ----- Private Functions ----- */
-
-  private func getNextGameId() : Ids.GameId {
-    return 0; // TODO
-  };
-
-  private func getNextTablaId() : Ids.GameId {
-    return 0; // TODO
-  }
-}
-
-
-
   /* Isn't this done through starting a game?
   // Rent a tabla
-  public shared(msg) func rentTabla(tablaId: Ids.TablaId, gameId: ?Ids.GameId) : async Result.Result<(), Enums.Error> {
+  public shared(msg) func rentTabla(tablaId: Ids.TablaId, gameId: ?Text) : async Result.Result<(), Enums.Error> {
     let caller = msg.caller;
     
     if (Principal.isAnonymous(caller)) {
@@ -1060,7 +1062,7 @@ persistent actor GameLogic {
   /* //Removed to be replaced with single arrays as id in game type
 
   private stable var tablaEntries: [(Ids.TablaId, Types.Tabla)] = [];
-  private stable var gameEntries: [(Ids.GameId, Types.Game)] = [];
+  private stable var gameEntries: [(Text, Types.Game)] = [];
   
   */
 
@@ -1081,7 +1083,7 @@ persistent actor GameLogic {
     Utilities.hashNat32
   );
 
-  private var games = HashMap.fromIter<Ids.GameId, Types.Game>(
+  private var games = HashMap.fromIter<Text, Types.Game>(
     gameEntries.vals(), 
     10, 
     Utilities.eqNat32, 
@@ -1094,7 +1096,7 @@ persistent actor GameLogic {
   
   /* If you have the draw history you won't need this
   // Get current card for a game
-  public query func getCurrentCard(gameId: Ids.GameId) : async Result.Result<?Ids.CardId, Enums.Error> {
+  public query func getCurrentCard(gameId: Text) : async Result.Result<?Ids.CardId, Enums.Error> {
     switch (games.get(gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
@@ -1265,3 +1267,4 @@ persistent actor GameLogic {
     Buffer.toArray(ownedTablas)
   };
   */
+}

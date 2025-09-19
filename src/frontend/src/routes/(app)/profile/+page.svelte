@@ -3,7 +3,7 @@
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import { userStore } from "$lib/stores/user-store";
   import { onMount } from "svelte";
-  import type { Profile } from "../../../../declarations/backend/backend.did";
+  import type { Profile } from "../../../../../declarations/backend/backend.did";
 
   let isLoading = $state(true);
   let user: Profile | undefined = $state(undefined);

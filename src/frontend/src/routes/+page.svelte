@@ -6,6 +6,8 @@
 
   const playNow = () => goto("/join-game");
   const hostGame = () => goto("/host-game");
+  const profile = () => goto("/profile");
+  const dashboard = () => goto("/dashboard");
 </script>
 
 <div class="relative min-h-screen bg-[#0b0b0b] overflow-x-hidden">

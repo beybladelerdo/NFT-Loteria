@@ -7,6 +7,9 @@ module Types {
   public type Profile = {
     principalId: BaseIds.PrincipalId;
     username: Text;
+    games : Nat;
+    wins: Nat;
+    winRate: Float;
   };
 
   // Card positions in tabla
@@ -33,7 +36,7 @@ module Types {
 
   // Game
   public type Game = {
-    id: Ids.GameId;
+    id: Text;
     name: Text;
     host: Ids.PlayerId;
     createdAt: Int;
@@ -56,7 +59,7 @@ module Types {
     id: Ids.TablaId;
     owner: Ids.OwnerId;
     renter: ?Ids.RenterId;
-    gameId: ?Ids.GameId;
+    gameId: ?Text;
     rentalFee: Nat;
     tokenType: Enums.TokenType;
     rarity: Enums.Rarity;
@@ -78,7 +81,7 @@ module Types {
   // Rental record
   public type RentalRecord = {
     renter: Ids.RenterId;
-    gameId: ?Ids.GameId;
+    gameId: ?Text;
     startTime: Int;
     endTime: ?Int;
     fee: Nat;
@@ -90,7 +93,7 @@ module Types {
     id: Ids.TablaId;
     owner: Ids.OwnerId;
     renter: ?Ids.RenterId;
-    gameId: ?Ids.GameId;
+    gameId: ?Text;
     rentalFee: Nat;
     tokenType: Enums.TokenType;
     rarity: Enums.Rarity;

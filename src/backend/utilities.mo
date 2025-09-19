@@ -9,4 +9,5 @@ module Utilities {
   public let hashNat32 = func(key : Nat32) : Hash.Hash {
     Nat32.fromNat(Nat32.toNat(key) % (2 ** 32 - 1));
   };
+  
 }

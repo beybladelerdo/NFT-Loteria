@@ -11,28 +11,28 @@ module Commands {
         };
 
         public type JoinGame = {
-                gameId: Ids.GameId;
+                gameId: Text;
                 rentedTablaId: Ids.TablaId;
         };
 
         public type StartGame = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
         public type EndGame = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
         public type DrawCard = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
         public type MarkPosition = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
         public type ClaimWin = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
         public type UpdateTablaRentalFee = {

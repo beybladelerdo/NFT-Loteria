@@ -3,13 +3,13 @@ import Enums "enums";
 
 module Queries {
 
-        public type GetOpenGames = {
-                page: Nat;
-        };
+  public type GetOpenGames = {
+    page: Nat;
+  };
 
         public type OpenGames = {
                 page: Nat;
-                openGames: [Game];
+                openGames: [GameView];
         };
 
         public type GetActiveGames = {
@@ -18,15 +18,15 @@ module Queries {
 
         public type ActiveGames = {
                 page: Nat;
-                activeGames: [Game];
+                activeGames: [GameView];
         };
 
         public type GetGame = {
-                gameId: Ids.GameId;
+                gameId: Text;
         };
 
-        public type Game = {
-                id: Ids.GameId;
+        public type GameView = {
+                id: Text;
                 name: Text;
                 host: Ids.PlayerId;
                 createdAt: Int;
@@ -44,15 +44,11 @@ module Queries {
         };
 
         public type GetDrawHistory = {
-                gameId: Ids.GameId
+                gameId: Text;
         };
 
         public type DrawHistory = {
                 cardsDrawn: [Ids.CardId]
-        };
-
-        public type Profile = {
-
         };
         
 }
