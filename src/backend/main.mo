@@ -3,16 +3,21 @@ import Principal "mo:core/Principal";
 import PRNG "mo:core/internal/PRNG";
 import Text  "mo:core/Text";
 import Nat64 "mo:core/Nat64";
+import Nat32 "mo:core/Nat32";
 import Int "mo:core/Int";
 import Time "mo:core/Time";
 import Result "mo:core/Result";
-import Types "./types";
+import T "types";
+import IC "ic:aaaaa-aa";
 import Constants "constants";
 import Utilities "utilities";
 import Ledger "mo:waterway-mops/base/def/icp-ledger";
 import Account "mo:waterway-mops/base/def/account";
 import Enums "mo:waterway-mops/base/enums";
 import Map "mo:core/Map";
+import Random "mo:core/Random";
+import VarArray "mo:core/VarArray";
+import Array "mo:core/Array";
 import List "mo:core/List";
 import Ids "ids";
 import Commands "commands";
@@ -20,8 +25,8 @@ import Queries "queries";
 
 persistent actor GameLogic {
 
-  private var games = Map.empty<Text, Types.Game>() ;
-  private var profiles = Map.empty<Principal, Types.Profile>() ;
+  private var games = Map.empty<Text, T.Game>() ;
+  private var profiles = Map.empty<Principal, T.Profile>() ;
   private var tags = Map.empty<Text, Principal>() ;
 
   let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -49,7 +54,7 @@ persistent actor GameLogic {
       Text.fromVarArray(out)
     };
 
-  func toGameView(g : Types.Game) : Queries.GameView = {
+  func toGameView(g : T.Game) : Queries.GameView = {
     id = g.id;
     name = g.name;
     host = g.host;
@@ -67,16 +72,16 @@ persistent actor GameLogic {
     prizePool = g.prizePool;
   };
 
-  public query({caller}) func getProfile() : async Result.Result<Types.Profile, Text> {
-    switch (Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)){
+  public query({caller}) func getProfile() : async Result.Result<T.Profile, Text> {
+    switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)){
       case null {#err("no profile found")};
       case (?profile) {#ok(profile)}
     }
   };
   public shared({caller}) func createProfile(tag : Text) : async Result.Result<(),Text>{
-   switch(Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)){
+   switch(Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)){
     case null {
-      Map.add<Principal, Types.Profile>(
+      Map.add<Principal, T.Profile>(
         profiles,
         Principal.compare,
         caller,
@@ -96,7 +101,7 @@ persistent actor GameLogic {
   };
 
   public shared ({ caller }) func updateTag(newTag : Text) : async Result.Result<(), Text> {
-  switch (Map.get<Principal, Types.Profile>(profiles, Principal.compare, caller)) {
+  switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)) {
     case null { return #err("no profile found") };
     case (?prof) {
       let old = prof.username;
@@ -107,7 +112,7 @@ persistent actor GameLogic {
       if (old == newTag) return #ok(());
       ignore Map.take<Text, Principal>(tags, Text.compare, old);
       Map.add<Text, Principal>(tags, Text.compare, newTag, caller);
-      Map.add<Principal, Types.Profile>(profiles, Principal.compare, caller, { prof with username = newTag });
+      Map.add<Principal, T.Profile>(profiles, Principal.compare, caller, { prof with username = newTag });
       return #ok(());
     }
   }
@@ -153,14 +158,14 @@ persistent actor GameLogic {
   };
 
   public query func getGame(dto: Queries.GetGame) : async Result.Result<?Queries.GameView, Text> {
-    switch (Map.get<Text, Types.Game>(games, Text.compare, dto.gameId)){
+    switch (Map.get<Text, T.Game>(games, Text.compare, dto.gameId)){
       case null {#err("No Game found")};
       case (?g) {#ok(?toGameView(g))};
     }
   };
   
   public query func getDrawHistory(dto: Queries.GetDrawHistory) : async Result.Result<[Ids.CardId], Text> {
-    switch(Map.get<Text,Types.Game>(games, Text.compare, dto.gameId)){
+    switch(Map.get<Text,T.Game>(games, Text.compare, dto.gameId)){
       case null {#err("No Game found")};
       case (?g) {#ok(g.drawnCards)};
     }
@@ -183,7 +188,7 @@ persistent actor GameLogic {
       return #err("Game name cannot be empty");
     };
     
-    let newGame: Types.Game = {
+    let newGame: T.Game = {
       id = nextGameId;
       name = params.name;
       host = caller;
@@ -202,7 +207,7 @@ persistent actor GameLogic {
       prizePool = 0;
     };
 
-    Map.add<Text,Types.Game>(games, Text.compare, nextGameId, newGame);
+    Map.add<Text,T.Game>(games, Text.compare, nextGameId, newGame);
     #ok(newGame.id)
   };
 
@@ -212,7 +217,7 @@ persistent actor GameLogic {
       return #err("Anonymous identity cannot join games");
     };
     
-    switch (Map.get<Text,Types.Game>(games, Text.compare, dto.gameId)) {
+    switch (Map.get<Text,T.Game>(games, Text.compare, dto.gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
         if (game.status != #lobby) {
@@ -221,16 +226,6 @@ persistent actor GameLogic {
         
         if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) {
           return #err("Game is full");
-        };
-        for ((_,tabla_Id) in game.tablas.values()) {
-          if (tabla_Id == dto.rentedTablaId){
-            return #err("Tabla is already in use in the game");
-          } else {
-            let tablalist = List.fromArray<(Ids.PlayerId, Ids.TablaId)>(game.tablas);
-            List.add<(Ids.PlayerId, Ids.TablaId)>(tablalist, (caller,tabla_Id));
-            let updatedTablas = List.toArray(tablalist);
-            ignore Map.replace<Text,Types.Game>(games, Text.compare, dto.gameId, {game with tablas = updatedTablas});
-          }
         };
         for (player in game.players.vals()) {
           if (Principal.equal(player, caller)) {
@@ -261,94 +256,63 @@ persistent actor GameLogic {
         let playerlist = List.fromArray<Ids.PlayerId>(game.players);
         List.add<Ids.PlayerId>(playerlist, caller);
         let updatedPlayers = List.toArray(playerlist);
-
-        ignore Map.replace<Text,Types.Game>(games, Text.compare, dto.gameId, {game with players = updatedPlayers; prizePool = game.prizePool + game.entryFee; });
+        switch (addTablaToGame(caller, dto.gameId, dto.rentedTablaId)){
+          case (#ok(r)) {r};
+          case (#err(e)) {return #err(e)};
+        };
+        ignore Map.replace<Text,T.Game>(games, Text.compare, dto.gameId, {game with players = updatedPlayers; prizePool = game.prizePool + game.entryFee; });
         #ok(())
       };
     }
   };
   
-  public shared(msg) func addTablaToGame(gameId: Text, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let caller = msg.caller;
+  func addTablaToGame(caller:Principal, gameId: Text, tablaId: Ids.TablaId) : Result.Result<(), Text> {
     
-    if (Principal.isAnonymous(caller)) {
-      return #err("Anonymous identity cannot add tablas");
-    };
-    
-    switch (games.get(gameId)) {
+    switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
         // Check if player is in the game
         var playerFound = false;
         for (player in game.players.vals()) {
-          if (Principal.equal(player, caller)) {
+          if (player == caller) {
             playerFound := true;
           };
         };
-        
         if (not playerFound) {
           return #err("Player not in game");
         };
-        
-        // Check if tabla is already in use in this game
         for ((player, tabla) in game.tablas.vals()) {
           if (tabla == tablaId) {
             return #err("Tabla already in use in this game");
           };
         };
-        
-        // Count how many tablas the player already has
+
         var playerTablaCount = 0;
         for ((player, _) in game.tablas.vals()) {
-          if (Principal.equal(player, caller)) {
+          if (player == caller) {
             playerTablaCount += 1;
           };
         };
         
-        if (playerTablaCount >= MAX_TABLAS_PER_PLAYER) {
+        if (playerTablaCount >= Constants.MAX_TABLAS_PER_PLAYER) {
           return #err("Player already has maximum number of tablas");
         };
         
-        // Add tabla to the game
-        let updatedTablas = Array.append<(Ids.PlayerId, Ids.TablaId)>(game.tablas, [(caller, tablaId)]);
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = game.players;
-          tablas = updatedTablas;
-          drawnCards = game.drawnCards;
-          currentCard = game.currentCard;
-          marcas = game.marcas;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        };
-        
-        games.put(gameId, updatedGame);
+        let tablalist = List.fromArray<(Ids.PlayerId, Ids.TablaId)>(game.tablas);
+            List.add<(Ids.PlayerId, Ids.TablaId)>(tablalist, (caller,tablaId));
+            let updatedTablas = List.toArray(tablalist);
+            ignore Map.replace<Text,T.Game>(games, Text.compare, gameId, {game with tablas = updatedTablas});
         #ok(())
       };
     }
-    */
   };
   
-  public shared(msg) func startGame(gameId: Text) : async Result.Result<(), Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let caller = msg.caller;
+  public shared({caller}) func startGame(gameId: Text) : async Result.Result<(), Text> {
     
-    switch (games.get(gameId)) {
+    switch (Map.get<Text, T.Game>(games,Text.compare, gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
-        if (not Principal.equal(caller, game.host)) {
+        if (caller != game.host) {
           return #err("Only the host can start the game");
         };
         
@@ -359,115 +323,81 @@ persistent actor GameLogic {
         if (game.players.size() < 2) {
           return #err("Need at least 2 players to start");
         };
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = #active;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = game.players;
-          tablas = game.tablas;
-          drawnCards = game.drawnCards;
-          currentCard = game.currentCard;
-          marcas = game.marcas;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        };
-        
-        games.put(gameId, updatedGame);
+        ignore Map.replace<Text, T.Game>(games, Text.compare, gameId, {game with status = #active });
         #ok(())
       };
     }
-    */
   };
-  
-  public shared(msg) func drawCard(gameId: Text) : async Result.Result<Ids.CardId, Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let caller = msg.caller;
-    
-    switch (games.get(gameId)) {
-      case (null) { #err("Game not found") };
-      case (?game) {
-        if (not Principal.equal(caller, game.host)) {
-          return #err("Only the host can draw cards");
-        };
-        
-        if (game.status != #active) {
-          return #err("Game is not active");
-        };
-        
-        if (game.drawnCards.size() >= TOTAL_CARDS) {
-          return #err("All cards have been drawn");
-        };
-        
-        // Generate a random card ID
-        let seed : Blob = "\14\C9\72\09\03\D4\D5\72\82\95\E5\43\AF\FA\A9\44\49\2F\25\56\13\F3\6E\C7\B0\87\DC\76\08\69\14\CF";
-        let random = Random.Finite(seed);
-        var cardId : Ids.CardId = 0;
-        var attempts = 0;
-        
-        while (attempts < TOTAL_CARDS) {
-          let randNat = random.range(32); // Generate a random 32-bit number
-          switch(randNat){
-            case (?foundNat){
-              cardId := Nat32.fromNat(foundNat % TOTAL_CARDS) + 1;
-            };
-            case (null){}
-          };
-          
-          // Check if card is undrawn
-          if (Array.find<Ids.CardId>(game.drawnCards, func(c) { c == cardId }) == null) {
-            // Found an undrawn card
-            let updatedDrawnCards = Array.append<Ids.CardId>(game.drawnCards, [cardId]);
-            
-            let updatedGame = {
-              id = game.id;
-              name = game.name;
-              host = game.host;
-              createdAt = game.createdAt;
-              status = game.status;
-              mode = game.mode;
-              tokenType = game.tokenType;
-              entryFee = game.entryFee;
-              hostFeePercent = game.hostFeePercent;
-              players = game.players;
-              tablas = game.tablas;
-              drawnCards = updatedDrawnCards;
-              currentCard = ?cardId;
-              marcas = game.marcas;
-              winner = game.winner;
-              prizePool = game.prizePool;
-            };
-            
-            games.put(gameId, updatedGame);
-            return #ok(cardId);
-          };
-          
-          attempts += 1;
-        };
-        
-        #err("Could not find an undrawn card")
-      };
+  transient let crypto = Random.crypto();
+  let drawLocks = Map.empty<Text, Bool>();
+  func lock(id : Text) : Bool {
+    switch (Map.get<Text, Bool>(drawLocks, Text.compare, id)) {
+      case (?_) { false };
+      case null { Map.add<Text, Bool>(drawLocks, Text.compare, id, true); true };
     }
-    */
   };
+  func unlock(id : Text) { ignore Map.take<Text, Bool>(drawLocks, Text.compare, id) };
+
+  public shared ({ caller }) func drawCard(gameId : Text)
+  : async Result.Result<Ids.CardId, Text>
+{
+  if (not lock(gameId)) return #err("draw in progress");
+
+  switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
+    case (null) { unlock(gameId); return #err("Game not found") };
+    case (?game) {
+      if (caller != game.host)     { unlock(gameId); return #err("Only the host can draw cards") };
+      if (game.status != #active)  { unlock(gameId); return #err("Game is not active") };
+      if (game.drawnCards.size() >= Constants.TOTAL_CARDS) { unlock(gameId); return #err("All cards have been drawn") };
+
+      // bitmap of drawn cards (1..54) using VarArray.repeat + index assignment
+      let taken = VarArray.repeat<Bool>(false, Constants.TOTAL_CARDS + 1);
+      for (c in Array.values<Ids.CardId>(game.drawnCards)) {
+        let i = Nat32.toNat(c);
+        if (i <= Constants.TOTAL_CARDS) { taken[i] := true };
+      };
+
+      let remaining = Constants.TOTAL_CARDS - game.drawnCards.size();
+      let k : Nat = await* crypto.natRange(0, remaining);  // index inside undrawn set
+
+      // locate k-th undrawn card
+      var seen : Nat = 0;
+      var chosen : Nat = 0;
+      var v : Nat = 1;
+      label find while (v <= Constants.TOTAL_CARDS) {
+        if (not taken[v]) {
+          if (seen == k) { chosen := v; break find };
+          seen += 1;
+        };
+        v += 1;
+      };
+      if (chosen == 0) { unlock(gameId); return #err("Internal error") };
+
+      let cardId : Ids.CardId = Nat32.fromNat(chosen);
+
+      // append to drawnCards via core/List
+      var drawnL = List.fromArray<Ids.CardId>(game.drawnCards);
+      List.add<Ids.CardId>(drawnL, cardId);
+      let updatedDrawn = List.toArray<Ids.CardId>(drawnL);
+
+      Map.add<Text, T.Game>(
+        games, Text.compare, gameId,
+        { game with drawnCards = updatedDrawn; currentCard = ?cardId }
+      );
+
+      unlock(gameId);
+      #ok(cardId)
+    }
+  }
+};
   
-  public shared(msg) func markPosition(gameId: Text, tablaId: Ids.TablaId, position: Types.Position) : async Result.Result<(), Enums.Error> {
-    return #err(#NotFound);
-    /*
-    let caller = msg.caller;
+  public shared({caller}) func markPosition(gameId: Text, tablaId: Ids.TablaId, position: T.Position) : async Result.Result<(), Text> {
     
     if (Principal.isAnonymous(caller)) {
       return #err("Anonymous identity cannot mark positions");
     };
     
-    switch (games.get(gameId)) {
+    switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
       case (null) { #err("Game not found") };
       case (?game) {
         if (game.status != #active) {
@@ -475,22 +405,20 @@ persistent actor GameLogic {
         };
         
         // Check if position is valid
-        if (position.row >= TABLA_SIZE or position.col >= TABLA_SIZE) {
+        if (position.row >= Constants.TABLA_SIZE or position.col >= Constants.TABLA_SIZE) {
           return #err("Invalid position");
         };
         
         // Check if player owns the tabla
         var ownsTabla = false;
         for ((player, tabla) in game.tablas.vals()) {
-          if (Principal.equal(player, caller) and tabla == tablaId) {
+          if (player == caller and tabla == tablaId) {
             ownsTabla := true;
           };
         };
-        
         if (not ownsTabla) {
           return #err("Player does not own this tabla in this game");
         };
-        
         // Check if position is already marked
         for (marca in game.marcas.vals()) {
           if (marca.tablaId == tablaId and 
@@ -499,41 +427,17 @@ persistent actor GameLogic {
             return #err("Position already marked");
           };
         };
-        
-        // Add the mark
-        let newMarca: Types.Marca = {
+        let currentMarcas = List.fromArray<T.Marca>(game.marcas);
+        List.add<T.Marca>(currentMarcas, {
           playerId = caller;
           tablaId = tablaId;
           position = position;
           timestamp = Time.now();
-        };
-        
-        let updatedMarcas = Array.append<Types.Marca>(game.marcas, [newMarca]);
-        
-        let updatedGame = {
-          id = game.id;
-          name = game.name;
-          host = game.host;
-          createdAt = game.createdAt;
-          status = game.status;
-          mode = game.mode;
-          tokenType = game.tokenType;
-          entryFee = game.entryFee;
-          hostFeePercent = game.hostFeePercent;
-          players = game.players;
-          tablas = game.tablas;
-          drawnCards = game.drawnCards;
-          currentCard = game.currentCard;
-          marcas = updatedMarcas;
-          winner = game.winner;
-          prizePool = game.prizePool;
-        };
-        
-        games.put(gameId, updatedGame);
+        });
+        ignore Map.replace<Text,T.Game>(games, Text.compare, gameId, {game with marcas= List.toArray(currentMarcas)});
         #ok(())
       };
     }
-    */
   };
   
   public shared(msg) func claimWin(gameId: Text, tablaId: Ids.TablaId) : async Result.Result<(), Enums.Error> {
@@ -569,7 +473,7 @@ persistent actor GameLogic {
         };
         
         // Get all marked positions for this tabla by this player
-        let playerMarks = Array.filter<Types.Marca>(
+        let playerMarks = Array.filter<T.Marca>(
           game.marcas, 
           func(m) { Principal.equal(m.playerId, caller) and m.tablaId == tablaId }
         );
@@ -584,7 +488,7 @@ persistent actor GameLogic {
               var rowComplete = true;
               for (col in Iter.range(0, TABLA_SIZE - 1)) {
 
-                let obj = Array.find<Types.Marca>(
+                let obj = Array.find<T.Marca>(
                     playerMarks, 
                     func(m) { m.position.row == row and m.position.col == col }
                 );
@@ -610,7 +514,7 @@ persistent actor GameLogic {
                 var colComplete = true;
                 for (row in Iter.range(0, TABLA_SIZE - 1)) {
 
-                    let obj = Array.find<Types.Marca>(
+                    let obj = Array.find<T.Marca>(
                         playerMarks, 
                         func(m) { m.position.row == row and m.position.col == col }
                     );
@@ -637,7 +541,7 @@ persistent actor GameLogic {
               var diagComplete = true;
               for (i in Iter.range(0, TABLA_SIZE - 1)) {
 
-                let obj = Array.find<Types.Marca>(
+                let obj = Array.find<T.Marca>(
                     playerMarks, 
                     func(m) { m.position.row == i and m.position.col == i }
                 );
@@ -660,7 +564,7 @@ persistent actor GameLogic {
               diagComplete := true;
               for (i in Iter.range(0, TABLA_SIZE - 1)) {
 
-                let obj = Array.find<Types.Marca>(
+                let obj = Array.find<T.Marca>(
                     playerMarks, 
                      func(m) { m.position.row == i and m.position.col == (TABLA_SIZE - 1 - i) }
                 );
@@ -687,7 +591,7 @@ persistent actor GameLogic {
             for (row in Iter.range(0, TABLA_SIZE - 1)) {
               for (col in Iter.range(0, TABLA_SIZE - 1)) {
 
-                let obj = Array.find<Types.Marca>(
+                let obj = Array.find<T.Marca>(
                     playerMarks, 
                     func(m) { m.position.row == row and m.position.col == col }
                 );
@@ -799,7 +703,7 @@ persistent actor GameLogic {
           return #err("Cannot update fee while tabla is rented");
         };
         
-        let updatedTabla : Types.Tabla = {
+        let updatedTabla : T.Tabla = {
           id = tabla.id;
           owner = tabla.owner;
           renter = tabla.renter;
@@ -824,10 +728,10 @@ persistent actor GameLogic {
 
   /* ----- Tabla Queries ----- */
 
-  public query func getAvailableTablas() : async Result.Result<[Types.TablaInfo], Enums.Error> {
+  public query func getAvailableTablas() : async Result.Result<[T.TablaInfo], Enums.Error> {
     return #err(#NotFound);
     /*
-    let availableTablas = Buffer.Buffer<Types.TablaInfo>(10);
+    let availableTablas = Buffer.Buffer<T.TablaInfo>(10);
     
     for ((id, tabla) in tablas.entries()) {
       if (tabla.status == #available) {
@@ -851,7 +755,7 @@ persistent actor GameLogic {
     */
   };
   
-  public query func getTabla(tablaId: Ids.TablaId) : async Result.Result<?Types.TablaInfo, Enums.Error> {
+  public query func getTabla(tablaId: Ids.TablaId) : async Result.Result<?T.TablaInfo, Enums.Error> {
     return #err(#NotFound);
     /*
     
@@ -908,7 +812,7 @@ persistent actor GameLogic {
         // and transfer fees to the owner and platform
         
         // Create rental record
-        let rentalRecord : Types.RentalRecord = {
+        let rentalRecord : T.RentalRecord = {
           renter = caller;
           gameId = gameId;
           startTime = Time.now();
@@ -918,9 +822,9 @@ persistent actor GameLogic {
         };
         
         // Update the tabla
-        let updatedRentalHistory = Array.append<Types.RentalRecord>(tabla.rentalHistory, [rentalRecord]);
+        let updatedRentalHistory = Array.append<T.RentalRecord>(tabla.rentalHistory, [rentalRecord]);
         
-        let updatedTabla : Types.Tabla = {
+        let updatedTabla : T.Tabla = {
           id = tabla.id;
           owner = tabla.owner;
           renter = ?caller;
@@ -961,7 +865,7 @@ persistent actor GameLogic {
             };
             
             // Update the last rental record with an end time
-            let updatedRentalHistory = Array.map<Types.RentalRecord, Types.RentalRecord>(
+            let updatedRentalHistory = Array.map<T.RentalRecord, T.RentalRecord>(
               tabla.rentalHistory,
               func (record) {
                 if (record.endTime == null and Principal.equal(record.renter, renter)) {
@@ -980,7 +884,7 @@ persistent actor GameLogic {
             );
             
             // Update the tabla
-            let updatedTabla : Types.Tabla = {
+            let updatedTabla : T.Tabla = {
               id = tabla.id;
               owner = tabla.owner;
               renter = null;
@@ -1023,7 +927,7 @@ persistent actor GameLogic {
           return #err("Cannot transfer ownership while tabla is rented");
         };
         
-        let updatedTabla : Types.Tabla = {
+        let updatedTabla : T.Tabla = {
           id = tabla.id;
           owner = newOwner;
           renter = tabla.renter;
@@ -1056,13 +960,13 @@ persistent actor GameLogic {
   /* //Removed to be replaced with function to get the next tabla id
 
   private stable var nextTablaId: Ids.TablaId = 1;
-  private stable var nextGameId: Types.GameId = 1;
+  private stable var nextGameId: T.GameId = 1;
   */
 
   /* //Removed to be replaced with single arrays as id in game type
 
-  private stable var tablaEntries: [(Ids.TablaId, Types.Tabla)] = [];
-  private stable var gameEntries: [(Text, Types.Game)] = [];
+  private stable var tablaEntries: [(Ids.TablaId, T.Tabla)] = [];
+  private stable var gameEntries: [(Text, T.Game)] = [];
   
   */
 
@@ -1076,14 +980,14 @@ persistent actor GameLogic {
 
   Can be done in an easier way
 
-  private var tablas = HashMap.fromIter<Ids.TablaId, Types.Tabla>(
+  private var tablas = HashMap.fromIter<Ids.TablaId, T.Tabla>(
     tablaEntries.vals(), 
     10, 
     Utilities.eqNat32, 
     Utilities.hashNat32
   );
 
-  private var games = HashMap.fromIter<Text, Types.Game>(
+  private var games = HashMap.fromIter<Text, T.Game>(
     gameEntries.vals(), 
     10, 
     Utilities.eqNat32, 
@@ -1154,7 +1058,7 @@ persistent actor GameLogic {
       let cards = Buffer.toArray(cardBuffer);
       
       // Determine rarity based on tabla ID
-      let rarity : Types.Rarity = if (i % 100 == 0) {
+      let rarity : T.Rarity = if (i % 100 == 0) {
         #legendary
       } else if (i % 25 == 0) {
         #epic
@@ -1176,7 +1080,7 @@ persistent actor GameLogic {
       };
       
       // Create the tabla metadata
-      let metadata : Types.TablaMetadata = {
+      let metadata : T.TablaMetadata = {
         name = "Tabla #" # Nat.toText(Nat32.toNat(nextTablaId));
         description = "A crypto-themed lotería tabla with unique card combinations";
         image = "https://example.com/tablas/" # Nat.toText(Nat32.toNat(nextTablaId)) # ".png"; // Placeholder
@@ -1184,7 +1088,7 @@ persistent actor GameLogic {
       };
       
       // Create the tabla
-      let newTabla : Types.Tabla = {
+      let newTabla : T.Tabla = {
         id = nextTablaId;
         owner = admin; // Initially owned by admin
         renter = null;
@@ -1211,8 +1115,8 @@ persistent actor GameLogic {
 
   /* Not sure why this is needed
   // Get tablas rented by a user
-  public query func getRentedTablasByUser(renter: Principal) : async [Types.TablaInfo] {
-    let rentedTablas = Buffer.Buffer<Types.TablaInfo>(10);
+  public query func getRentedTablasByUser(renter: Principal) : async [T.TablaInfo] {
+    let rentedTablas = Buffer.Buffer<T.TablaInfo>(10);
     
     for ((id, tabla) in tablas.entries()) {
       switch (tabla.renter) {
@@ -1243,8 +1147,8 @@ persistent actor GameLogic {
   
   /* Not sure this is needed just yet, also the caller can't get owned tablas without mapping from internet identity to nft or logging in with the wallet holding the nft
   // Get tablas owned by a user
-  public query func getOwnedTablasByUser(owner: Principal) : async [Types.TablaInfo] {
-    let ownedTablas = Buffer.Buffer<Types.TablaInfo>(10);
+  public query func getOwnedTablasByUser(owner: Principal) : async [T.TablaInfo] {
+    let ownedTablas = Buffer.Buffer<T.TablaInfo>(10);
     
     for ((id, tabla) in tablas.entries()) {
       if (Principal.equal(tabla.owner, owner)) {
