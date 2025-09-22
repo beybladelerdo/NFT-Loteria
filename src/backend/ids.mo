@@ -1,4 +1,3 @@
-
 module Ids {
   public type PlayerId = Principal;
   public type TablaId = Nat32;

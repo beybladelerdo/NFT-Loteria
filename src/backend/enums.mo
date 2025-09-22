@@ -2,14 +2,14 @@ module Enums {
 
   // Game status
   public type GameStatus = {
-    #lobby;    // Players can join
-    #active;   // Game in progress
+    #lobby; // Players can join
+    #active; // Game in progress
     #completed; // Game finished
   };
 
   // Game mode
   public type GameMode = {
-    #line;     // Win by completing a line, row, or diagonal
+    #line; // Win by completing a line, row, or diagonal
     #blackout; // Win by marking all positions
   };
 
@@ -18,7 +18,7 @@ module Enums {
     #ICP;
     #ckBTC;
   };
-  
+
   // Rarity types
   public type Rarity = {
     #common;
@@ -27,8 +27,7 @@ module Enums {
     #epic;
     #legendary;
   };
-  
-  
+
   // Rental status
   public type RentalStatus = {
     #available;
