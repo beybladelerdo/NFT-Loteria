@@ -222,7 +222,7 @@ persistent actor GameLogic {
         if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) {
           return #err("Game is full");
         };
-        for (player in game.players.vals()) {
+        for (player in game.players.values()) {
           if (Principal.equal(player, caller)) {
             return #err("Player already in game");
           };
@@ -269,7 +269,7 @@ persistent actor GameLogic {
       case (?game) {
         // Check if player is in the game
         var playerFound = false;
-        for (player in game.players.vals()) {
+        for (player in game.players.values()) {
           if (player == caller) {
             playerFound := true;
           };
@@ -277,14 +277,14 @@ persistent actor GameLogic {
         if (not playerFound) {
           return #err("Player not in game");
         };
-        for ((player, tabla) in game.tablas.vals()) {
+        for ((player, tabla) in game.tablas.values()) {
           if (tabla == tablaId) {
             return #err("Tabla already in use in this game");
           };
         };
 
         var playerTablaCount = 0;
-        for ((player, _) in game.tablas.vals()) {
+        for ((player, _) in game.tablas.values()) {
           if (player == caller) {
             playerTablaCount += 1;
           };
@@ -418,7 +418,7 @@ persistent actor GameLogic {
 
         // Check if player owns the tabla
         var ownsTabla = false;
-        for ((player, tabla) in game.tablas.vals()) {
+        for ((player, tabla) in game.tablas.values()) {
           if (player == caller and tabla == tablaId) {
             ownsTabla := true;
           };
@@ -427,7 +427,7 @@ persistent actor GameLogic {
           return #err("Player does not own this tabla in this game");
         };
         // Check if position is already marked
-        for (marca in game.marcas.vals()) {
+        for (marca in game.marcas.values()) {
           if (
             marca.tablaId == tablaId and
             marca.position.row == position.row and
@@ -468,7 +468,7 @@ persistent actor GameLogic {
         let masks = Utils.makeMasks(Constants.TABLA_SIZE);
 
         let mres = Utils.markMaskFor(game, caller, tablaId, Constants.TABLA_SIZE, drawnSet, cardAt);
-        let #ok(mm) = mres else { let #err(e) = mres; return #err(e) };
+        let #ok mm = mres else { let #err e = mres; return #err(e) };
 
         let won = switch (game.mode) {
           case (#line) Utils.hasLine(mm, masks);
