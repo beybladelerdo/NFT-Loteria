@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { quintOut } from 'svelte/easing';
-  import { fade, scale } from 'svelte/transition';
-  import { onMount } from 'svelte';
-  import type { Snippet } from 'svelte';
-  import CloseIcon from '$lib/icons/CloseIcon.svelte';
- 
+  import { quintOut } from "svelte/easing";
+  import { fade, scale } from "svelte/transition";
+  import { onMount } from "svelte";
+  import type { Snippet } from "svelte";
+  import CloseIcon from "$lib/icons/CloseIcon.svelte";
+
   interface ModalOptions {
     selector?: string;
     backdropClass?: string;
@@ -19,21 +19,24 @@
     if (selector) {
       const query = document.querySelector(selector);
       if (query) modalParent = query as HTMLElement;
-      else throw new Error(`No existing node that matches selector "${selector}"`);
+      else
+        throw new Error(`No existing node that matches selector "${selector}"`);
     } else {
       modalParent = document.body;
     }
 
-    const backdrop = document.createElement('div');
-    if (backdropClass) backdrop.classList.add(...backdropClass.split(' ').filter(Boolean));
+    const backdrop = document.createElement("div");
+    if (backdropClass)
+      backdrop.classList.add(...backdropClass.split(" ").filter(Boolean));
     backdrop.append(node);
     modalParent.append(backdrop);
 
     const onClick = (e: MouseEvent) => {
       const eventPath = e.composedPath();
-      const modalContent = node.querySelector('[data-modal-content]');
+      const modalContent = node.querySelector("[data-modal-content]");
 
-      const isClickInsideModal = modalContent && eventPath.includes(modalContent);
+      const isClickInsideModal =
+        modalContent && eventPath.includes(modalContent);
       if (isClickInsideModal) {
         return;
       }
@@ -41,21 +44,23 @@
       onClickOutside?.(e);
     };
 
-    if (onClickOutside) backdrop.addEventListener('click', onClick);
+    if (onClickOutside) backdrop.addEventListener("click", onClick);
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onEscape?.(e);
+      if (e.key === "Escape") onEscape?.(e);
     };
-    if (onEscape) window.addEventListener('keydown', onKeyDown);
+    if (onEscape) window.addEventListener("keydown", onKeyDown);
 
     const focusableElements = node.querySelectorAll(
-      'a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      'a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])',
     );
     const firstFocusable = focusableElements[0] as HTMLElement;
-    const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
+    const lastFocusable = focusableElements[
+      focusableElements.length - 1
+    ] as HTMLElement;
 
     const trapFocus = (e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
+      if (e.key === "Tab") {
         if (e.shiftKey && document.activeElement === firstFocusable) {
           e.preventDefault();
           lastFocusable.focus();
@@ -66,15 +71,15 @@
       }
     };
 
-    node.addEventListener('keydown', trapFocus);
+    node.addEventListener("keydown", trapFocus);
     firstFocusable?.focus();
 
     return {
       destroy() {
         backdrop.remove();
-        window.removeEventListener('keydown', onKeyDown);
-        node.removeEventListener('keydown', trapFocus);
-      }
+        window.removeEventListener("keydown", onKeyDown);
+        node.removeEventListener("keydown", trapFocus);
+      },
     };
   }
 
@@ -85,7 +90,7 @@
     maxHeight?: string;
   }
 
-  let { children, onClose, title, maxHeight = 'h-[80vh]' }: Props = $props();
+  let { children, onClose, title, maxHeight = "h-[80vh]" }: Props = $props();
   let visible = $state(true);
 
   const close = () => {
@@ -103,9 +108,9 @@
   };
 
   onMount(() => {
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   });
 </script>
@@ -114,9 +119,9 @@
   <div
     class="modal-background"
     use:modal={{
-      backdropClass: 'fixed inset-0 bg-black cursor-pointer z-40',
+      backdropClass: "fixed inset-0 bg-black cursor-pointer z-40",
       onClickOutside: onCloseHandler,
-      onEscape: onEscapeHandler
+      onEscape: onEscapeHandler,
     }}
     out:fade={{ duration: 200 }}
     role="dialog"
@@ -132,9 +137,16 @@
         class="bg-BrandBlack border border-BrandGray rounded ${maxHeight} shadow-2xl flex flex-col"
         data-modal-content
       >
-        <div class="flex-none px-6 py-4 border-b sm:px-8 sm:py-6 border-BrandGray">
+        <div
+          class="flex-none px-6 py-4 border-b sm:px-8 sm:py-6 border-BrandGray"
+        >
           <div class="flex items-center justify-between">
-            <h3 id="modalTitle" class="text-2xl text-white retro-text md:text-4xl">{title}</h3>
+            <h3
+              id="modalTitle"
+              class="text-2xl text-white retro-text md:text-4xl"
+            >
+              {title}
+            </h3>
             <button
               onclick={close}
               class="p-2 transition-colors rounded-lg hover:bg-gray-700"
@@ -144,7 +156,10 @@
             </button>
           </div>
         </div>
-        <div id="modalContent" class="flex-1 px-6 py-6 overflow-y-auto sm:px-8 sm:py-6">
+        <div
+          id="modalContent"
+          class="flex-1 px-6 py-6 overflow-y-auto sm:px-8 sm:py-6"
+        >
           {@render children()}
         </div>
       </div>

@@ -60,7 +60,7 @@ const config: UserConfig = {
   css: {},
   // ADD THIS SSR CONFIGURATION
   ssr: {
-    noExternal: ['svelte-motion']
+    noExternal: ["svelte-motion"],
   },
   build: {
     target: "es2020",

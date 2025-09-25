@@ -4,13 +4,15 @@
   import { browser } from "$app/environment";
   import { initAuthWorker } from "$lib/services/worker.auth.services";
   import { authStore, type AuthStoreData } from "$lib/stores/auth-store";
-  import { displayAndCleanLogoutMsg } from "$lib/services/auth-services";
+  import {
+    displayAndCleanLogoutMsg,
+    signIn,
+  } from "$lib/services/auth-services";
   import { authSignedInStore } from "$lib/derived/auth.derived";
   import { userStore } from "$lib/stores/user-store";
   import type { Profile } from "../../../../declarations/backend/backend.did";
   import SetUsername from "$lib/components/profile/set-username.svelte";
 
-  import Connect from "$lib/components/profile/connect.svelte";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import Toasts from "$lib/components/shared/toasts/toasts.svelte";
   import { get } from "svelte/store";
@@ -29,6 +31,7 @@
   let isMenuOpen = $state(false);
   let hasProfile = $state(false);
   let user: Profile | undefined = $state(undefined);
+  let isSigningIn = $state(false);
 
   const init = async () => {
     if (!browser) return;
@@ -36,16 +39,34 @@
     displayAndCleanLogoutMsg();
   };
 
-  onMount(async () => {
-    if (browser) {
-      document.querySelector("#app-spinner")?.remove();
+  async function ensureSignedIn() {
+    if (!browser) return;
+    if (isSigningIn) return;
+    if (!get(authSignedInStore)) {
+      isSigningIn = true;
+      isLoading = true;
+      try {
+        await signIn({}); // II popup/redirect
+      } catch (e) {
+        console.error("signIn failed", e);
+        isSigningIn = false;
+        isLoading = false;
+      }
     }
+  }
+
+  onMount(async () => {
+    if (browser) document.querySelector("#app-spinner")?.remove();
     await init();
     worker = await initAuthWorker();
+
     const identity = get(authStore).identity;
-    if (identity) {
-      await checkProfile();
+    if (!identity) {
+      await ensureSignedIn();
+      return;
     }
+
+    await checkProfile();
     isLoading = false;
   });
 
@@ -54,8 +75,9 @@
   }
 
   $effect(() => {
-    if ($authSignedInStore) {
-      checkProfile();
+    if (browser && !$authSignedInStore) {
+      // If user signs out elsewhere, prompt II again
+      ensureSignedIn();
     }
   });
 
@@ -92,5 +114,8 @@
   {/if}
   <Toasts />
 {:else}
-  <Connect />
+  <!-- No Connect component. We immediately trigger sign-in and keep a loader. -->
+  <div in:fade>
+    <Spinner />
+  </div>
 {/if}

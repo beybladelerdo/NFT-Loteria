@@ -1,5 +1,9 @@
-const cardMods = import.meta.glob("$lib/assets/Cards/Character_*.png", { eager: true });
-const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.png",   { eager: true });
+const cardMods = import.meta.glob("$lib/assets/Cards/Character_*.png", {
+  eager: true,
+});
+const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.png", {
+  eager: true,
+});
 
 // extract trailing number for sorting
 function idFromPath(p: string): number {
@@ -24,8 +28,8 @@ function toSortedUrls(mods: Record<string, unknown>): string[] {
   return urls;
 }
 
-export const cardImages  = toSortedUrls(cardMods);   // should be 54
-export const tablaImages = toSortedUrls(tablaMods);  // should be 1026
+export const cardImages = toSortedUrls(cardMods); // should be 54
+export const tablaImages = toSortedUrls(tablaMods); // should be 1026
 
 if (import.meta.env.DEV) {
   console.log("[gallery] cards:", cardImages.length);

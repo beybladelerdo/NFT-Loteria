@@ -1,6 +1,6 @@
 <script lang="ts">
-    import MenuIcon from "$lib/icons/MenuIcon.svelte";
-    
+  import MenuIcon from "$lib/icons/MenuIcon.svelte";
+
   interface Props {
     toggleMenu: () => void;
   }
@@ -13,8 +13,9 @@
   }
 </script>
 
-<header class="z-30 flex items-center justify-between h-16 px-6 text-white shadow-md bg-BrandBlack/90">
-  
+<header
+  class="z-30 flex items-center justify-between h-16 px-6 text-white shadow-md bg-BrandBlack/90"
+>
   <div class="flex items-center gap-4">
     <button
       onclick={handleMenuClick}

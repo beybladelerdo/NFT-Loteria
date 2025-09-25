@@ -9,7 +9,7 @@ export default {
         "loteria-accent": "#F97316",
       },
       fontFamily: {
-        'freigeist': ['FreigeistXCon'],
+        freigeist: ["FreigeistXCon"],
       },
       animation: {
         "card-draw": "cardDraw 0.5s ease-out",
