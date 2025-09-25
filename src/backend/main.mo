@@ -22,7 +22,9 @@ import Utils "utilities";
 import Ids "ids";
 import Commands "commands";
 import Queries "queries";
+import {migration} "migration";
 
+(with migration)
 persistent actor GameLogic {
 
   private var games = Map.empty<Text, T.Game>();
