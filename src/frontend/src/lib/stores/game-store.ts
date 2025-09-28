@@ -1,19 +1,15 @@
-import { writable } from "svelte/store";
-import {
-  GameService,
-  type Game,
-  type Tabla,
-  type CreateGameParams,
-  type JoinGameParams,
-  type RentTablaParams,
-} from "$lib/services/game-service";
+import { GameService } from "$lib/services/game-service";
+import type {
+  GameView,
+  TablaInfo,
+} from "../../../../declarations/backend/backend.did";
+import type { CreateGameParams } from "$lib/services/game-service";
 
 export interface GameStoreData {
-  openGames: Game[];
-  activeGames: Game[];
-  currentGame: Game | null;
-  availableTablas: Tabla[];
-  rentedTablas: Tabla[];
+  openGames: GameView[];
+  activeGames: GameView[];
+  currentGame: GameView | null;
+  availableTablas: TablaInfo[];
   isLoading: boolean;
 }
 
@@ -22,7 +18,6 @@ let data = $state<GameStoreData>({
   activeGames: [],
   currentGame: null,
   availableTablas: [],
-  rentedTablas: [],
   isLoading: false,
 });
 
@@ -30,10 +25,12 @@ export const gameStore = {
   get value() {
     return $derived(data);
   },
-  async fetchOpenGames() {
+
+  // -------- Lists --------
+  async fetchOpenGames(page = 0) {
     data.isLoading = true;
     try {
-      const games = await new GameService().getOpenGames();
+      const games = await new GameService().getOpenGames(page);
       data.openGames = games;
     } catch (error) {
       console.error("Error fetching open games:", error);
@@ -41,15 +38,18 @@ export const gameStore = {
       data.isLoading = false;
     }
   },
-  async fetchActiveGames() {
+
+  async fetchActiveGames(page = 0) {
     try {
-      const games = await new GameService().getActiveGames();
+      const games = await new GameService().getActiveGames(page);
       data.activeGames = games;
     } catch (error) {
       console.error("Error fetching active games:", error);
     }
   },
-  async fetchGameById(gameId: number) {
+
+  // -------- Details --------
+  async fetchGameById(gameId: string) {
     data.isLoading = true;
     try {
       const game = await new GameService().getGame(gameId);
@@ -62,6 +62,8 @@ export const gameStore = {
       data.isLoading = false;
     }
   },
+
+  // -------- Lifecycle --------
   async createGame(params: CreateGameParams) {
     data.isLoading = true;
     try {
@@ -71,29 +73,29 @@ export const gameStore = {
         return { success: true, gameId: result.gameId };
       }
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating game:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     } finally {
       data.isLoading = false;
     }
   },
-  async joinGame(params: JoinGameParams) {
+
+  async joinGame(gameId: string, rentedTablaId: number) {
     data.isLoading = true;
     try {
-      const result = await new GameService().joinGame(params);
-      if (result.success) {
-        return { success: true };
-      }
+      const result = await new GameService().joinGame(gameId, rentedTablaId);
+      if (result.success) return { success: true };
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error joining game:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     } finally {
       data.isLoading = false;
     }
   },
-  async startGame(gameId: number) {
+
+  async startGame(gameId: string) {
     data.isLoading = true;
     try {
       const result = await new GameService().startGame(gameId);
@@ -103,14 +105,15 @@ export const gameStore = {
         return { success: true };
       }
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error starting game:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     } finally {
       data.isLoading = false;
     }
   },
-  async drawCard(gameId: number) {
+
+  async drawCard(gameId: string) {
     try {
       const result = await new GameService().drawCard(gameId);
       if (result.success) {
@@ -118,12 +121,13 @@ export const gameStore = {
         return { success: true, cardId: result.cardId };
       }
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error drawing card:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     }
   },
-  async endGame(gameId: number) {
+
+  async endGame(gameId: string) {
     data.isLoading = true;
     try {
       const result = await new GameService().endGame(gameId);
@@ -133,13 +137,15 @@ export const gameStore = {
         return { success: true };
       }
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error ending game:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     } finally {
       data.isLoading = false;
     }
   },
+
+  // -------- Tablas --------
   async fetchAvailableTablas() {
     try {
       const tablas = await new GameService().getAvailableTablas();
@@ -148,20 +154,8 @@ export const gameStore = {
       console.error("Error fetching available tablas:", error);
     }
   },
-  async rentTabla(params: RentTablaParams) {
-    try {
-      const result = await new GameService().rentTabla(params);
-      if (result.success) {
-        await gameStore.fetchAvailableTablas();
-        return { success: true };
-      }
-      return { success: false, error: result.error };
-    } catch (error) {
-      console.error("Error renting tabla:", error);
-      return { success: false, error: error.message };
-    }
-  },
-  async claimWin(gameId: number, tablaId: number) {
+
+  async claimWin(gameId: string, tablaId: number) {
     try {
       const result = await new GameService().claimWin(gameId, tablaId);
       if (result.success) {
@@ -169,11 +163,13 @@ export const gameStore = {
         return { success: true };
       }
       return { success: false, error: result.error };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error claiming win:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: error?.message ?? String(error) };
     }
   },
+
+  // -------- Utils --------
   refreshGames() {
     gameStore.fetchOpenGames();
     gameStore.fetchActiveGames();

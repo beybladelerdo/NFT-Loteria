@@ -2,32 +2,24 @@ import { UserService } from "$lib/services/user-service";
 import type { Profile } from "../../../../declarations/backend/backend.did";
 
 function createUserStore() {
+  const svc = new UserService();
+
   async function getProfile(): Promise<Profile | undefined> {
-    return new UserService().getProfile();
+    return svc.getProfile();
   }
 
-  async function isUsernameValid(username: string): Promise<boolean> {
-    return new UserService().isUsernameValid(username);
+  async function createProfile(tag: string): Promise<void> {
+    return svc.createProfile(tag);
   }
 
-  async function createProfile(username: string): Promise<any> {
-    return new UserService().createProfile(username);
-  }
-
-  async function updateProfile(username: string): Promise<any> {
-    return new UserService().updateProfile(username);
-  }
-
-  async function deleteProfile(): Promise<any> {
-    return new UserService().deleteProfile();
+  async function updateTag(newTag: string): Promise<void> {
+    return svc.updateTag(newTag);
   }
 
   return {
     getProfile,
     createProfile,
-    updateProfile,
-    isUsernameValid,
-    deleteProfile,
+    updateTag,
   };
 }
 
