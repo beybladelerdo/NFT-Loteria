@@ -8,7 +8,6 @@ import Int "mo:core/Int";
 import Time "mo:core/Time";
 import Result "mo:core/Result";
 import T "types";
-import IC "ic:aaaaa-aa";
 import Constants "constants";
 import Ledger "mo:waterway-mops/base/def/icp-ledger";
 import Account "mo:waterway-mops/base/def/account";
@@ -27,8 +26,13 @@ import {migration} "migration";
 (with migration)
 persistent actor GameLogic {
 
+  type Entry = (Nat32, Text);
+  let burnAddress = "0000000000000000000000000000000000000000000000000000000000000001";
+  let ext : actor { getRegistry : shared query () -> async [Entry] } = actor ("psaup-3aaaa-aaaak-qsxlq-cai");
+
   private var games = Map.empty<Text, T.Game>();
   private var profiles = Map.empty<Principal, T.Profile>();
+  private var owners = Map.empty<Nat32, Text>();
   private var tags = Map.empty<Text, Principal>();
   private var tablas = Map.empty<Nat32, T.Tabla>();
 
@@ -69,6 +73,24 @@ persistent actor GameLogic {
       case null { #err("cardAt: tabla layout not found") };
     };
   };
+  
+  public func refreshRegistry() : async () {
+    let entries = await ext.getRegistry();
+    for ((id, owner) in Array.values(entries)){
+      if (owner != burnAddress){
+        Map.add<Nat32, Text>(owners, Nat32.compare, id + 1, owner);
+      };
+    };
+  };
+  public query func ownerOf(idx : Nat32) : async ?Text {
+    Map.get<Nat32,Text>(owners, Nat32.compare, idx)
+  };
+  public query func isTagAvailable(tag : Text) : async Bool {
+    switch (Map.get<Text, Principal>(tags, Text.compare, tag)) {
+      case null true;
+      case (?_) false;
+    };
+  };
 
   public query ({ caller }) func getProfile() : async Result.Result<T.Profile, Text> {
     switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)) {
@@ -77,24 +99,30 @@ persistent actor GameLogic {
     };
   };
   public shared ({ caller }) func createProfile(tag : Text) : async Result.Result<(), Text> {
-    switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)) {
-      case null {
-        Map.add<Principal, T.Profile>(
-          profiles,
-          Principal.compare,
-          caller,
-          {
-            principalId = Principal.toText(caller);
-            username = tag;
-            games = 0;
-            wins = 0;
-            winRate = 0.00;
-          },
-        );
-        Map.add<Text, Principal>(tags, Text.compare, tag, caller);
-        #ok();
+  if (Principal.isAnonymous(caller)) return #err("anonymous not allowed");
+
+  switch (Map.get<Text, Principal>(tags, Text.compare, tag)) {
+    case (?_) { return #err("username taken") };
+    case null {};
+  };
+  switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)) {
+    case (?_) { return #err("Profile Already exists") };
+    case null {
+      Map.add<Principal, T.Profile>(
+        profiles,
+        Principal.compare,
+        caller,
+        {
+          principalId = Principal.toText(caller);
+          username = tag;
+          games = 0;
+          wins = 0;
+          winRate = 0.0;
+        },
+      );
+      Map.add<Text, Principal>(tags, Text.compare, tag, caller);
+      #ok();
       };
-      case _existing { #err("Profile Already exists") };
     };
   };
 
@@ -381,8 +409,6 @@ persistent actor GameLogic {
         if (chosen == 0) { unlock(gameId); return #err("Internal error") };
 
         let cardId : Ids.CardId = Nat32.fromNat(chosen);
-
-        // append to drawnCards via core/List
         var drawnL = List.fromArray<Ids.CardId>(game.drawnCards);
         List.add<Ids.CardId>(drawnL, cardId);
         let updatedDrawn = List.toArray<Ids.CardId>(drawnL);
