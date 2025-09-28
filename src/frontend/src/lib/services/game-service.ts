@@ -1,290 +1,299 @@
 import { ActorFactory } from "$lib/utils/actor.factory";
 import { authStore } from "$lib/stores/auth-store";
-import { isError } from "$lib/utils/helpers";
+import type {
+  _SERVICE,
+  // Records / variants
+  GameView,
+  TablaInfo,
+  GameMode, // { line: null } | { blackout: null }
+  TokenType, // { ICP: null } | { ckBTC: null }
+  Position, // { row: bigint; col: bigint }
+  // DTOs
+  GetOpenGames, // { page: bigint }
+  GetActiveGames, // { page: bigint }
+  GetGame, // { gameId: string }
+  JoinGame, // { gameId: string; rentedTablaId: number }
+  UpdateTablaRentalFee, // { tablaId: number; newFee: bigint }
+  // Results
+  Result, // { ok: null } | { err: string }
+  Result_1, // getTablaCards
+  Result_2, // getTabla
+  Result_3, // getProfile (unused here)
+  Result_4, // getOpenGames
+  Result_5, // getGame
+  Result_6, // getDrawHistory
+  Result_7, // getAvailableTablas
+  Result_8, // getActiveGames
+  Result_9, // drawCard
+  Result_10, // createGame
+} from "../../../../declarations/backend/backend.did";
 
-// Placeholder types (refine with .did file)
-export interface Game {
-  id: number;
-  name: string;
-  mode: "Line" | "Blackout";
-  tokenType: "ICP" | "ckBTC";
-  entryFee: number; // e8s
-  hostFeePercent: number;
-  players: string[];
-  // Add other fields
+const BACKEND_CANISTER_ID =
+  (import.meta as any)?.env?.VITE_BACKEND_CANISTER_ID ??
+  (process as any)?.env?.BACKEND_CANISTER_ID ??
+  "";
+
+function unwrapOpt<T>(opt: [] | [T]): T | null {
+  return (opt as any)?.length ? (opt as [T])[0] : null;
 }
 
-export interface Tabla {
-  id: number;
-  tokenType: "ICP" | "ckBTC";
-  rentalFee: number; // e8s
-  owner: string;
-  // Add other fields
+function toMode(mode: "Line" | "Blackout"): GameMode {
+  return mode === "Line" ? { line: null } : { blackout: null };
+}
+
+function toToken(tt: "ICP" | "ckBTC"): TokenType {
+  return tt === "ICP" ? { ICP: null } : { ckBTC: null };
 }
 
 export interface CreateGameParams {
   name: string;
   mode: "Line" | "Blackout";
   tokenType: "ICP" | "ckBTC";
-  entryFee: number; // Decimal (e.g., 0.1 ICP)
-  hostFeePercent: number;
-}
-
-export interface JoinGameParams {
-  gameId: number;
-}
-
-export interface RentTablaParams {
-  tablaId: number;
-  gameId: number | null;
-  owner: string;
+  /**
+   * Entry fee is an INTEGER count of whole tokens (ICP or ckBTC).
+   * (Backend multiplies by 1e8 internally for ICP transfers.)
+   */
+  entryFee: number;
+  hostFeePercent: number; // 0..20 enforced by backend
 }
 
 export class GameService {
-  private async getGameLogicActor() {
-    return ActorFactory.createIdentityActor(
+  private async getActor(): Promise<_SERVICE> {
+    return (await ActorFactory.createIdentityActor(
       authStore,
-      process.env.GAME_LOGIC_CANISTER_ID ?? "",
-    );
+      BACKEND_CANISTER_ID,
+    )) as unknown as _SERVICE;
   }
 
-  private async getTablaRentalActor() {
-    return ActorFactory.createIdentityActor(
-      authStore,
-      process.env.TABLA_RENTAL_CANISTER_ID ?? "",
-    );
-  }
+  // ---------- Games (lists & details) ----------
 
-  private async getPaymentSystemActor() {
-    return ActorFactory.createIdentityActor(
-      authStore,
-      process.env.PAYMENT_SYSTEM_CANISTER_ID ?? "",
-    );
-  }
-
-  async getOpenGames(): Promise<Game[]> {
+  async getOpenGames(page = 0): Promise<GameView[]> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.getOpenGames();
-      if (isError(result)) return [];
-      return result.ok || [];
-    } catch (error) {
-      console.error("Error getting open games:", error);
+      const actor = await this.getActor();
+      const dto: GetOpenGames = { page: BigInt(page) };
+      const res: Result_4 = await actor.getOpenGames(dto);
+      if ("err" in res) return [];
+      return res.ok.openGames;
+    } catch (e) {
+      console.error("getOpenGames failed:", e);
       return [];
     }
   }
 
-  async getActiveGames(): Promise<Game[]> {
+  async getActiveGames(page = 0): Promise<GameView[]> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.getActiveGames();
-      if (isError(result)) return [];
-      return result.ok || [];
-    } catch (error) {
-      console.error("Error getting active games:", error);
+      const actor = await this.getActor();
+      const dto: GetActiveGames = { page: BigInt(page) };
+      const res: Result_8 = await actor.getActiveGames(dto);
+      if ("err" in res) return [];
+      return res.ok.activeGames;
+    } catch (e) {
+      console.error("getActiveGames failed:", e);
       return [];
     }
   }
 
-  async getGame(gameId: number): Promise<Game | null> {
+  async getGame(gameId: string): Promise<GameView | null> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.getGame(gameId);
-      if (isError(result) || result.length === 0) return null;
-      return result[0];
-    } catch (error) {
-      console.error("Error getting game:", error);
+      const actor = await this.getActor();
+      const dto: GetGame = { gameId };
+      const res: Result_5 = await actor.getGame(dto);
+      if ("err" in res) return null;
+      return unwrapOpt(res.ok);
+    } catch (e) {
+      console.error("getGame failed:", e);
       return null;
     }
   }
 
+  // ---------- Game lifecycle ----------
+
   async createGame(
     params: CreateGameParams,
-  ): Promise<{ success: boolean; gameId?: number; error?: string }> {
+  ): Promise<{ success: boolean; gameId?: string; error?: string }> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const paymentActor: any = await this.getPaymentSystemActor();
-      const entryFeeE8s = Math.floor(params.entryFee * 100000000);
-      const gameParams = {
-        name: params.name,
-        mode: params.mode === "Line" ? { line: null } : { blackout: null },
-        tokenType: params.tokenType === "ICP" ? { ICP: null } : { ckBTC: null },
-        entryFee: entryFeeE8s,
-        hostFeePercent: params.hostFeePercent,
-      };
-      const result: any = await actor.createGame(gameParams);
-      if (isError(result)) {
-        return { success: false, error: result.err };
+      // entryFee must be an integer nat
+      if (!Number.isInteger(params.entryFee) || params.entryFee < 0) {
+        return {
+          success: false,
+          error:
+            "entryFee must be a non-negative integer (whole ICP/ckBTC tokens)",
+        };
       }
-      await paymentActor.payGameEntryFee(
-        result.ok,
-        entryFeeE8s,
-        gameParams.tokenType,
-      );
-      return { success: true, gameId: result.ok };
-    } catch (error) {
-      console.error("Error creating game:", error);
-      return { success: false, error: error.message };
+      const actor = await this.getActor();
+      const res: Result_10 = await actor.createGame({
+        name: params.name,
+        mode: toMode(params.mode),
+        tokenType: toToken(params.tokenType),
+        entryFee: BigInt(params.entryFee),
+        hostFeePercent: BigInt(params.hostFeePercent),
+      });
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true, gameId: res.ok };
+    } catch (e: any) {
+      console.error("createGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 
   async joinGame(
-    params: JoinGameParams,
+    gameId: string,
+    rentedTablaId: number,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const paymentActor: any = await this.getPaymentSystemActor();
-      const gameResult: any = await actor.getGame(params.gameId);
-      if (isError(gameResult) || !gameResult[0]) {
-        return { success: false, error: "Game not found" };
-      }
-      const game = gameResult[0];
-      // Assume authStore provides userBalance (to be implemented)
-      const userBalance = { ICP: 0, ckBTC: 0 }; // Placeholder
-      const userTokenBalance =
-        game.tokenType === "ICP" ? userBalance.ICP : userBalance.ckBTC;
-      if (userTokenBalance < game.entryFee / 100000000) {
-        return {
-          success: false,
-          error: `Insufficient ${game.tokenType} balance`,
-        };
-      }
-      const joinResult: any = await actor.joinGame(params.gameId);
-      if (isError(joinResult)) {
-        return { success: false, error: joinResult.err };
-      }
-      await paymentActor.payGameEntryFee(
-        params.gameId,
-        game.entryFee,
-        game.tokenType,
-      );
+      const actor = await this.getActor();
+      const dto: JoinGame = { gameId, rentedTablaId };
+      const res: Result = await actor.joinGame(dto);
+      if ("err" in res) return { success: false, error: res.err };
       return { success: true };
-    } catch (error) {
-      console.error("Error joining game:", error);
-      return { success: false, error: error.message };
+    } catch (e: any) {
+      console.error("joinGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 
   async startGame(
-    gameId: number,
+    gameId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.startGame(gameId);
-      if (isError(result)) {
-        return { success: false, error: result.err };
-      }
+      const actor = await this.getActor();
+      const res: Result = await actor.startGame(gameId);
+      if ("err" in res) return { success: false, error: res.err };
       return { success: true };
-    } catch (error) {
-      console.error("Error starting game:", error);
-      return { success: false, error: error.message };
+    } catch (e: any) {
+      console.error("startGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async endGame(gameId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.endGame(gameId);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("endGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 
   async drawCard(
-    gameId: number,
+    gameId: string,
   ): Promise<{ success: boolean; cardId?: number; error?: string }> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.drawCard(gameId);
-      if (isError(result)) {
-        return { success: false, error: result.err };
-      }
-      return { success: true, cardId: result.ok };
-    } catch (error) {
-      console.error("Error drawing card:", error);
-      return { success: false, error: error.message };
+      const actor = await this.getActor();
+      const res: Result_9 = await actor.drawCard(gameId);
+      if ("err" in res) return { success: false, error: res.err };
+      // CardId is nat32 → number
+      return { success: true, cardId: Number(res.ok) };
+    } catch (e: any) {
+      console.error("drawCard failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 
-  async endGame(gameId: number): Promise<{ success: boolean; error?: string }> {
+  async getDrawHistory(gameId: string): Promise<number[]> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.endGame(gameId);
-      if (isError(result)) {
-        return { success: false, error: result.err };
-      }
-      return { success: true };
-    } catch (error) {
-      console.error("Error ending game:", error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async getAvailableTablas(): Promise<Tabla[]> {
-    try {
-      const actor: any = await this.getTablaRentalActor();
-      const result: any = await actor.getAvailableTablas();
-      if (isError(result)) return [];
-      return result.ok || [];
-    } catch (error) {
-      console.error("Error getting available tablas:", error);
+      const actor = await this.getActor();
+      const res: Result_6 = await actor.getDrawHistory({ gameId });
+      if ("err" in res) return [];
+      return Array.from(res.ok as ArrayLike<number>, Number);
+    } catch (e) {
+      console.error("getDrawHistory failed:", e);
       return [];
     }
   }
 
-  async rentTabla(
-    params: RentTablaParams,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const tablaActor: any = await this.getTablaRentalActor();
-      const paymentActor: any = await this.getPaymentSystemActor();
-      const tablaResult: any = await tablaActor.getTabla(params.tablaId);
-      if (isError(tablaResult) || !tablaResult) {
-        return { success: false, error: "Tabla not found" };
-      }
-      const tabla = tablaResult;
-      // Placeholder userBalance
-      const userBalance = { ICP: 0, ckBTC: 0 };
-      const userTokenBalance =
-        tabla.tokenType === "ICP" ? userBalance.ICP : userBalance.ckBTC;
-      if (userTokenBalance < tabla.rentalFee / 100000000) {
-        return {
-          success: false,
-          error: `Insufficient ${tabla.tokenType} balance`,
-        };
-      }
-      const paymentResult: any = await paymentActor.payTablaRental(
-        params.tablaId,
-        tabla.rentalFee,
-        tabla.tokenType,
-        params.owner,
-      );
-      if (isError(paymentResult)) {
-        return { success: false, error: paymentResult.err };
-      }
-      const rentResult: any = await tablaActor.rentTabla(
-        params.tablaId,
-        params.gameId,
-      );
-      if (isError(rentResult)) {
-        return { success: false, error: rentResult.err };
-      }
-      if (params.gameId) {
-        const gameActor: any = await this.getGameLogicActor();
-        await gameActor.addTablaToGame(params.gameId, params.tablaId);
-      }
-      return { success: true };
-    } catch (error) {
-      console.error("Error renting tabla:", error);
-      return { success: false, error: error.message };
-    }
-  }
-
   async claimWin(
-    gameId: number,
+    gameId: string,
     tablaId: number,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const actor: any = await this.getGameLogicActor();
-      const result: any = await actor.claimWin(gameId, tablaId);
-      if (isError(result)) {
-        return { success: false, error: result.err };
-      }
+      const actor = await this.getActor();
+      const res: Result = await actor.claimWin(gameId, tablaId);
+      if ("err" in res) return { success: false, error: res.err };
       return { success: true };
-    } catch (error) {
-      console.error("Error claiming win:", error);
-      return { success: false, error: error.message };
+    } catch (e: any) {
+      console.error("claimWin failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  // ---------- Tablas ----------
+
+  async getAvailableTablas(): Promise<TablaInfo[]> {
+    try {
+      const actor = await this.getActor();
+      const res: Result_7 = await actor.getAvailableTablas();
+      if ("err" in res) return [];
+      return res.ok;
+    } catch (e) {
+      console.error("getAvailableTablas failed:", e);
+      return [];
+    }
+  }
+
+  async getTabla(tablaId: number): Promise<TablaInfo | null> {
+    try {
+      const actor = await this.getActor();
+      const res: Result_2 = await actor.getTabla(tablaId);
+      if ("err" in res) return null;
+      return unwrapOpt(res.ok);
+    } catch (e) {
+      console.error("getTabla failed:", e);
+      return null;
+    }
+  }
+
+  async getTablaCards(tablaId: number): Promise<number[]> {
+    try {
+      const actor = await this.getActor();
+      const res: Result_1 = await actor.getTablaCards(tablaId);
+      if ("err" in res) return [];
+      return res.ok.map((n) => Number(n));
+    } catch (e) {
+      console.error("getTablaCards failed:", e);
+      return [];
+    }
+  }
+
+  async updateRentalFee(
+    tablaId: number,
+    newFee: number,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!Number.isInteger(newFee) || newFee < 0) {
+        return {
+          success: false,
+          error: "newFee must be a non-negative integer",
+        };
+      }
+      const actor = await this.getActor();
+      const dto: UpdateTablaRentalFee = { tablaId, newFee: BigInt(newFee) };
+      const res: Result = await actor.updateRentalFee(dto);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("updateRentalFee failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async markPosition(
+    gameId: string,
+    tablaId: number,
+    pos: { row: number; col: number },
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const dto: Position = { row: BigInt(pos.row), col: BigInt(pos.col) };
+      const res: Result = await actor.markPosition(gameId, tablaId, dto);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("markPosition failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 }

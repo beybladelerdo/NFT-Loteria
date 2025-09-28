@@ -46,7 +46,7 @@
       isSigningIn = true;
       isLoading = true;
       try {
-        await signIn({}); // II popup/redirect
+        await signIn({});
       } catch (e) {
         console.error("signIn failed", e);
         isSigningIn = false;
@@ -76,7 +76,6 @@
 
   $effect(() => {
     if (browser && !$authSignedInStore) {
-      // If user signs out elsewhere, prompt II again
       ensureSignedIn();
     }
   });

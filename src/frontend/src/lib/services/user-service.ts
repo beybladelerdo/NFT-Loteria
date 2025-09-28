@@ -1,82 +1,57 @@
 import { ActorFactory } from "../utils/actor.factory";
 import { authStore } from "$lib/stores/auth-store";
 import type {
-  CreateProfile,
-  IsUsernameValid,
+  _SERVICE,
   Profile,
-  SendMessage,
-  UpdateProfile,
+  Result,
+  Result_3,
 } from "../../../../declarations/backend/backend.did";
-import { isError } from "$lib/utils/helpers";
+
+const BACKEND_CANISTER_ID =
+  (import.meta as any)?.env?.VITE_BACKEND_CANISTER_ID ??
+  (process as any)?.env?.BACKEND_CANISTER_ID ??
+  "";
 
 export class UserService {
+  private async getActor(): Promise<_SERVICE> {
+    const actor = (await ActorFactory.createIdentityActor(
+      authStore,
+      BACKEND_CANISTER_ID,
+    )) as unknown as _SERVICE;
+    return actor;
+  }
+
   async getProfile(): Promise<Profile | undefined> {
     try {
-      const identityActor: any = await ActorFactory.createIdentityActor(
-        authStore,
-        process.env.BACKEND_CANISTER_ID ?? "",
-      );
-      const result: any = await identityActor.getProfile();
-      if (isError(result)) {
-        return undefined;
-      }
-      return result.ok;
+      const actor = await this.getActor();
+      const res: Result_3 = await actor.getProfile();
+      if ("ok" in res) return res.ok;
+      return undefined;
     } catch (error) {
-      console.error("Error fetching profile: ", error);
+      console.error("Error fetching profile:", error);
       return undefined;
     }
   }
 
-  async isUsernameValid(username: string): Promise<boolean> {
-    const identityActor: any = await ActorFactory.createIdentityActor(
-      authStore,
-      process.env.BACKEND_CANISTER_ID ?? "",
-    );
-    let dto: IsUsernameValid = { username };
-    return await identityActor.isUsernameValid(dto);
+  /**
+   * Creates a profile with the given tag.
+   * Throws Error(message) if backend returns { err }.
+   */
+  async createProfile(tag: string): Promise<void> {
+    const actor = await this.getActor();
+    const res: Result = await actor.createProfile(tag);
+    if ("err" in res) throw new Error(res.err);
   }
 
-  async createProfile(username: string): Promise<any> {
-    try {
-      const identityActor = await ActorFactory.createIdentityActor(
-        authStore,
-        process.env.BACKEND_CANISTER_ID ?? "",
-      );
-      let dto: CreateProfile = { username };
-      const result = await identityActor.createProfile(dto);
-      return result;
-    } catch (error) {
-      console.error("Error creating profile: ", error);
-      throw error;
-    }
-  }
-
-  async updateProfile(username: string): Promise<any> {
-    try {
-      const identityActor = await ActorFactory.createIdentityActor(
-        authStore,
-        process.env.BACKEND_CANISTER_ID ?? "",
-      );
-      let dto: UpdateProfile = { username };
-      const result = await identityActor.updateProfile(dto);
-      return result;
-    } catch (error) {
-      console.error("Error creating profile: ", error);
-      throw error;
-    }
-  }
-
-  async deleteProfile(): Promise<any> {
-    try {
-      const identityActor = await ActorFactory.createIdentityActor(
-        authStore,
-        process.env.BACKEND_CANISTER_ID ?? "",
-      );
-      const result = await identityActor.deleteProfile();
-      return result;
-    } catch (error) {
-      console.error("Error deleting profile: ", error);
-      throw error;
-    }
+  /**
+   * Updates the username/tag.
+   * Throws Error(message) if backend returns { err } (e.g. "username taken").
+   */
+  async updateTag(newTag: string): Promise<void> {
+    const actor = await this.getActor();
+    const res: Result = await actor.updateTag(newTag);
+    if ("err" in res) throw new Error(res.err);
   }
 }
+
+export const userService = new UserService();
