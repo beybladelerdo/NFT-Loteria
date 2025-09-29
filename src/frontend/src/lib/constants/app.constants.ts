@@ -14,4 +14,4 @@ export const HOURS_IN_DAY = 24;
 export const DAYS_IN_NON_LEAP_YEAR = 365;
 export const DEV = import.meta.env.DEV;
 export const INTERNET_IDENTITY_CANISTER_ID =
-  "http://localhost:4943/?canisterId=qhbym-qaaaa-aaaaa-aaafq-cai#authorize";
+  "http://localhost:4943/?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai#authorize";
