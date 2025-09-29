@@ -1,4 +1,4 @@
-import { ActorFactory } from "../../utils/ActorFactory";
+import { ActorFactory } from "../utils/ActorFactory";
 import { authStore } from "$lib/stores/auth-store";
 import type {
   _SERVICE,

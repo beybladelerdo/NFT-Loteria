@@ -8,7 +8,7 @@ import { createAuthClient } from "$lib/utils/auth.utils";
 import { popupCenter } from "$lib/utils/window.utils";
 import type { AuthClient } from "@dfinity/auth-client";
 import { writable, type Readable } from "svelte/store";
-import { ActorFactory } from "../../utils/ActorFactory";
+import { ActorFactory } from "../utils/ActorFactory";
 import { isError } from "$lib/utils/helpers";
 
 export interface AuthStoreData {
