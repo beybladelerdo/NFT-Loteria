@@ -1,7 +1,11 @@
 import { existingTablas } from "$lib/data/existing-tablas";
 
-const cardMods = import.meta.glob("$lib/assets/Cards/Character_*.png", { eager: true });
-const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.png", { eager: true });
+const cardMods = import.meta.glob("$lib/assets/Cards/Character_*.png", {
+  eager: true,
+});
+const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.png", {
+  eager: true,
+});
 
 // extract trailing number for sorting
 function idFromPath(p: string): number {
@@ -27,10 +31,12 @@ function toSortedUrls(mods: Record<string, unknown>): string[] {
 }
 
 const filteredTablaMods = Object.fromEntries(
-  Object.entries(tablaMods).filter(([path]) => existingTablas.has(idFromPath(path)))
+  Object.entries(tablaMods).filter(([path]) =>
+    existingTablas.has(idFromPath(path)),
+  ),
 );
 
-export const cardImages = toSortedUrls(cardMods); 
+export const cardImages = toSortedUrls(cardMods);
 export const tablaImages = toSortedUrls(filteredTablaMods);
 
 if (import.meta.env.DEV) {

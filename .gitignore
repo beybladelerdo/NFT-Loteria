@@ -14,6 +14,7 @@
 src/declarations/
 src/frontend/src/lib/assets/Cards
 src/frontend/src/lib/assets/Tablas
+src/frontend/src/lib/assets/Layouts
 # frontend code
 node_modules/
 dist/

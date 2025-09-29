@@ -13,7 +13,8 @@ async function main() {
   });
 
   const files = await fs.readdir(ROOT);
-  let keep = 0, remove = 0;
+  let keep = 0,
+    remove = 0;
 
   for (const f of files) {
     const m = f.match(RX);

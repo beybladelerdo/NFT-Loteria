@@ -35,11 +35,31 @@ persistent actor GameLogic {
   private var owners = Map.empty<Nat32, Text>();
   private var tags = Map.empty<Text, Principal>();
   private var tablas = Map.empty<Nat32, T.Tabla>();
+  private var admins = Map.empty<Principal, Bool>();
 
   let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   let digits = Text.toArray("0123456789");
   transient let rng = PRNG.sfc64a();
   rng.init(Nat64.fromIntWrap(Time.now()));
+
+  func isAdmin(p : Principal) : Bool {
+    switch (Map.get<Principal, Bool>(admins, Principal.compare, p)) {
+      case (?_) true;
+      case null false;
+    }
+  };
+
+  public shared ({ caller }) func bootstrapAdmin() : async Result.Result<(), Text> {
+    if (Map.size(admins) > 0) return #err("already bootstrapped");
+    Map.add<Principal, Bool>(admins, Principal.compare, caller, true);
+    #ok(())
+  };
+
+  public shared ({ caller }) func adminAdd(p : Principal) : async Result.Result<(), Text> {
+    if (not isAdmin(caller)) return #err("unauthorized");
+    Map.add<Principal, Bool>(admins, Principal.compare, p, true);
+    #ok(())
+  };
 
   func pick(arr : [Char], bound : Nat64) : Char {
     let idx = Nat64.toNat(Nat64.rem(rng.next(), bound));
