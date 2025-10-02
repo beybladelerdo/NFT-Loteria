@@ -7,10 +7,7 @@ import type {
   Result_3,
 } from "../../../../declarations/backend/backend.did";
 
-const BACKEND_CANISTER_ID =
-  (import.meta as any)?.env?.VITE_BACKEND_CANISTER_ID ??
-  (process as any)?.env?.BACKEND_CANISTER_ID ??
-  "";
+const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 
 export class UserService {
   private async getActor(): Promise<_SERVICE> {

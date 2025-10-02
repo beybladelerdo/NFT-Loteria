@@ -1,11 +1,10 @@
 import {
   AUTH_MAX_TIME_TO_LIVE,
-  AUTH_POPUP_HEIGHT,
-  AUTH_POPUP_WIDTH,
+  DEV,
+  INTERNET_IDENTITY_CANISTER_ID,
 } from "$lib/constants/app.constants";
 import type { OptionIdentity } from "$lib/types/identity";
 import { createAuthClient } from "$lib/utils/auth.utils";
-import { popupCenter } from "$lib/utils/window.utils";
 import type { AuthClient } from "@dfinity/auth-client";
 import { writable, type Readable } from "svelte/store";
 import { ActorFactory } from "../utils/ActorFactory";
@@ -56,28 +55,28 @@ const initAuthStore = (): AuthStore => {
     signIn: ({ domain }: AuthSignInParams) =>
       new Promise<void>(async (resolve, reject) => {
         authClient = authClient ?? (await createAuthClient());
-        const identityProvider = domain;
 
-        await authClient?.login({
+        const loginOptions: any = {
           maxTimeToLive: AUTH_MAX_TIME_TO_LIVE,
           onSuccess: () => {
             update((state: AuthStoreData) => ({
               ...state,
               identity: authClient?.getIdentity(),
             }));
-
             resolve();
           },
           onError: reject,
-          identityProvider,
-          ...(isNnsAlternativeOrigin() && {
-            derivationOrigin: NNS_IC_APP_DERIVATION_ORIGIN,
-          }),
-          windowOpenerFeatures: popupCenter({
-            width: AUTH_POPUP_WIDTH,
-            height: AUTH_POPUP_HEIGHT,
-          }),
-        });
+        };
+
+        // Only set identityProvider in production
+        if (!DEV) {
+          loginOptions.identityProvider = domain;
+        } else {
+          // In dev mode, use the local Internet Identity
+          loginOptions.identityProvider = INTERNET_IDENTITY_CANISTER_ID;
+        }
+
+        await authClient?.login(loginOptions);
       }),
 
     signOut: async () => {

@@ -35,7 +35,7 @@ module {
   };
 
   public func migration(
-    old : { var games : [OldGame]; var profiles : [OldProfile] }
+    old : { games : [OldGame]; profiles : [OldProfile] }
   ) : {
     var games : Map.Map<Text, T.Game>;
     var profiles : Map.Map<Principal, T.Profile>;

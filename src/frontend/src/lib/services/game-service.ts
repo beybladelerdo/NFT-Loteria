@@ -28,10 +28,7 @@ import type {
   Result_10, // createGame
 } from "../../../../declarations/backend/backend.did";
 
-const BACKEND_CANISTER_ID =
-  (import.meta as any)?.env?.VITE_BACKEND_CANISTER_ID ??
-  (process as any)?.env?.BACKEND_CANISTER_ID ??
-  "";
+const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 
 function unwrapOpt<T>(opt: [] | [T]): T | null {
   return (opt as any)?.length ? (opt as [T])[0] : null;

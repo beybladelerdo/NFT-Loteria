@@ -5,7 +5,7 @@
   let mobileMenuOpen = $state(false);
 
   async function handleLogin() {
-    await authStore.signIn({ domain: "ic0.app" });
+    await authStore.signIn({});
     if (authStore.value.isAuthenticated) {
       goto("/dashboard");
     }

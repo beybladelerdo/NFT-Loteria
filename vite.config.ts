@@ -155,17 +155,15 @@ export default defineConfig((): UserConfig => {
       "process.env": {
         ...readCanisterIds({}),
         DFX_NETWORK: network,
-        CANISTER_ID_SNS_GOVERNANCE:
-          network === "ic"
-            ? "detjl-sqaaa-aaaaq-aacqa-cai"
-            : "by6od-j4aaa-aaaaa-qaadq-cai",
-        CANISTER_ID_SNS_ROOT:
-          network === "ic"
-            ? "gyito-zyaaa-aaaaq-aacpq-cai"
-            : "b77ix-eeaaa-aaaaa-qaada-cai",
-        TOTAL_GAMEWEEKS: 38,
-        LEAGUE_ID: 1,
+        CANISTER_ID_FRONTEND:
+          network === "ic" ? "" : "u6s2n-gx777-77774-qaaba-cai",
+        CANISTER_ID_BACKEND:
+          network === "ic" ? "" : "uxrrr-q7777-77774-qaaaq-cai",
+        CANISTER_ID_INTERNET_IDENTITY: "rdmx6-jaaaa-aaaaa-aaadq-cai",
       },
+      "import.meta.env.VITE_BACKEND_CANISTER_ID": JSON.stringify(
+        network === "ic" ? "" : "uxrrr-q7777-77774-qaaaq-cai",
+      ),
       VITE_APP_VERSION: JSON.stringify(version),
       VITE_DFX_NETWORK: JSON.stringify(network),
     },
