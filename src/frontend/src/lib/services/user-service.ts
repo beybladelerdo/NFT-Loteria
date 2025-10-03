@@ -49,6 +49,15 @@ export class UserService {
     const res: Result = await actor.updateTag(newTag);
     if ("err" in res) throw new Error(res.err);
   }
+  async isTagAvailable(tag: string): Promise<boolean> {
+    try {
+      const actor = await this.getActor();
+      return await actor.isTagAvailable(tag);
+    } catch (error) {
+      console.error("Error checking tag availability:", error);
+      return false;
+    }
+  }
 }
 
 export const userService = new UserService();

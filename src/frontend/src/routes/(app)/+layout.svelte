@@ -104,16 +104,15 @@
     <Spinner />
   </div>
 {:else if $authSignedInStore}
-  <Header {toggleMenu} />
-  <Sidebar {toggleMenu} {isMenuOpen} {hasProfile} />
-  {#if !user}
-    <SetUsername {userCreated} />
-  {:else}
+  {#if user}
+    <Header {toggleMenu} />
+    <Sidebar {toggleMenu} {isMenuOpen} {hasProfile} />
     {@render children()}
+  {:else}
+    <SetUsername {userCreated} />
   {/if}
   <Toasts />
 {:else}
-  <!-- No Connect component. We immediately trigger sign-in and keep a loader. -->
   <div in:fade>
     <Spinner />
   </div>

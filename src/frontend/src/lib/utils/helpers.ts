@@ -2,12 +2,11 @@ export function isUsernameValid(username: string): boolean {
   if (!username) {
     return false;
   }
-
   if (username.length < 5 || username.length > 20) {
     return false;
   }
-
-  return /^[a-zA-Z0-9]+$/.test(username);
+  // Allow letters, numbers, and hyphens
+  return /^[a-zA-Z0-9-]+$/.test(username);
 }
 
 interface ErrorResponse {
