@@ -11,10 +11,6 @@ const file = fileURLToPath(new URL("package.json", import.meta.url));
 const json = readFileSync(file, "utf8");
 const { version } = JSON.parse(json);
 
-// npm run dev = local
-// npm run build = local
-// dfx deploy = local
-// dfx deploy --network ic = ic
 const network = process.env.DFX_NETWORK ?? "local";
 const readCanisterIds = ({
   prefix,
@@ -55,12 +51,13 @@ const config: UserConfig = {
   resolve: {
     alias: {
       $declarations: resolve("./src/declarations"),
+      "lucide-svelte/dist/lucide-svelte.js": "lucide-svelte",
+      "lucide-svelte/dist/icons/index": "lucide-svelte",
     },
   },
   css: {},
-  // ADD THIS SSR CONFIGURATION
   ssr: {
-    noExternal: ["svelte-motion"],
+    noExternal: ["svelte-motion", "lucide-svelte"],
   },
   build: {
     target: "es2020",
@@ -90,7 +87,6 @@ const config: UserConfig = {
           return "index";
         },
       },
-      // Polyfill Buffer for production build
       plugins: [
         inject({
           modules: { Buffer: ["buffer", "Buffer"] },
@@ -98,7 +94,6 @@ const config: UserConfig = {
       ],
     },
   },
-  // proxy /api to port 4943 during development
   server: {
     proxy: {
       "/api": "http://localhost:4943",
@@ -109,11 +104,9 @@ const config: UserConfig = {
   },
   optimizeDeps: {
     esbuildOptions: {
-      // Node.js global to browser globalThis
       define: {
         global: "globalThis",
       },
-      // Enable esbuild polyfill plugins
       plugins: [
         NodeModulesPolyfillPlugin(),
         {
@@ -134,7 +127,6 @@ const config: UserConfig = {
 };
 
 export default defineConfig((): UserConfig => {
-  // Expand environment - .env files - with canister IDs
   process.env = {
     ...process.env,
     ...loadEnv(
@@ -150,7 +142,6 @@ export default defineConfig((): UserConfig => {
 
   return {
     ...config,
-    // Backwards compatibility for auto generated types of dfx that are meant for webpack and process.env
     define: {
       "process.env": {
         ...readCanisterIds({}),

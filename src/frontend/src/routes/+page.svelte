@@ -3,6 +3,7 @@
   import Marquee from "$lib/components/landing/SlideCarousel.svelte";
   import { cardImages, tablaImages } from "$lib/data/gallery";
   import BackgroundSvg from "$lib/components/landing/BackgroundSvg.svelte";
+  import HoverButton from "$lib/components/landing/InteractiveHover.svelte";
 
   const playNow = () => goto("/join-game");
   const hostGame = () => goto("/host-game");
@@ -48,7 +49,9 @@
               >
             </h1>
           </div>
-
+          <div class="mt-6 flex justify-center md:absolute md:top-10 md:right-10 md:mt-15">
+          <HoverButton text="Launch App" onclick={dashboard} />
+          </div>
           <p
             class="font-freigeist mx-auto mt-4 max-w-2xl text-base text-white/70 md:mt-5 md:text-lg"
           >

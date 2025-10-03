@@ -59,6 +59,7 @@
     "dotenv": "^16.4.5",
     "esbuild": "^0.24.0",
     "gsap": "^3.13.0",
+    "lucide-svelte": "^0.544.0",
     "postcss": "^8.4.47",
     "svelte-flag-icons": "^1.0.3",
     "svelte-motion": "^0.12.2",
