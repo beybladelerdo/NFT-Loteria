@@ -3,6 +3,7 @@
   import Marquee from "$lib/components/landing/SlideCarousel.svelte";
   import { cardImages, tablaImages } from "$lib/data/gallery";
   import BackgroundSvg from "$lib/components/landing/BackgroundSvg.svelte";
+  import AuroraText from "$lib/components/landing/AuroraText.svelte";
   import HoverButton from "$lib/components/landing/InteractiveHover.svelte";
 
   const playNow = () => goto("/join-game");
@@ -41,12 +42,11 @@
             <h1 class="leading-tight text-white">
               <span
                 class="font-freigeist block text-4xl font-extrabold tracking-tight md:text-6xl"
-                >Own your Tabla.</span
+                >Own your <AuroraText>Tabla.</AuroraText></span
               >
               <span
                 class="font-freigeist block text-4xl font-extrabold tracking-tight md:text-6xl"
-                >NFT Lotería</span
-              >
+                >NFT Lotería</span>
             </h1>
           </div>
           <div class="mt-6 flex justify-center md:absolute md:top-10 md:right-10 md:mt-15">
