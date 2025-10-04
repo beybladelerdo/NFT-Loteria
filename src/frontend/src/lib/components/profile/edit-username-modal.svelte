@@ -23,7 +23,7 @@
       if (!isUsernameValid(username)) {
         usernameError = "Username must be between 5 and 20 characters.";
       }
-      const available = await userStore.isUsernameValid(username);
+      const available = await userStore.isTagAvailable(username);
       usernameAvailable = available;
       usernameError = available ? "" : "Username is already taken";
     } catch (error) {
@@ -45,7 +45,7 @@
   async function saveUsername() {
     isLoading = true;
     try {
-      await userStore.updateProfile(username);
+      await userStore.isTagAvailable(username);
     } catch {
       console.error("Error updating profile");
     } finally {

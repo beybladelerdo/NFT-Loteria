@@ -13,36 +13,36 @@ export interface GameStoreData {
   isLoading: boolean;
 }
 
-let data = $state<GameStoreData>({
-  openGames: [],
-  activeGames: [],
-  currentGame: null,
-  availableTablas: [],
-  isLoading: false,
-});
+let openGames = $state<GameView[]>([]);
+let activeGames = $state<GameView[]>([]);
+let currentGame = $state<GameView | null>(null);
+let availableTablas = $state<TablaInfo[]>([]);
+let isLoading = $state(false);
 
 export const gameStore = {
-  get value() {
-    return $derived(data);
-  },
+  get openGames() { return openGames; },
+  get activeGames() { return activeGames; },
+  get currentGame() { return currentGame; },
+  get availableTablas() { return availableTablas; },
+  get isLoading() { return isLoading; },
 
   // -------- Lists --------
   async fetchOpenGames(page = 0) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const games = await new GameService().getOpenGames(page);
-      data.openGames = games;
+      openGames = games;
     } catch (error) {
       console.error("Error fetching open games:", error);
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
   async fetchActiveGames(page = 0) {
     try {
       const games = await new GameService().getActiveGames(page);
-      data.activeGames = games;
+      activeGames = games;
     } catch (error) {
       console.error("Error fetching active games:", error);
     }
@@ -50,22 +50,22 @@ export const gameStore = {
 
   // -------- Details --------
   async fetchGameById(gameId: string) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const game = await new GameService().getGame(gameId);
-      data.currentGame = game ?? null;
+      currentGame = game ?? null;
       return game;
     } catch (error) {
       console.error("Error fetching game:", error);
       return null;
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
   // -------- Lifecycle --------
   async createGame(params: CreateGameParams) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const result = await new GameService().createGame(params);
       if (result.success) {
@@ -77,12 +77,12 @@ export const gameStore = {
       console.error("Error creating game:", error);
       return { success: false, error: error?.message ?? String(error) };
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
   async joinGame(gameId: string, rentedTablaId: number) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const result = await new GameService().joinGame(gameId, rentedTablaId);
       if (result.success) return { success: true };
@@ -91,12 +91,12 @@ export const gameStore = {
       console.error("Error joining game:", error);
       return { success: false, error: error?.message ?? String(error) };
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
   async startGame(gameId: string) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const result = await new GameService().startGame(gameId);
       if (result.success) {
@@ -109,7 +109,7 @@ export const gameStore = {
       console.error("Error starting game:", error);
       return { success: false, error: error?.message ?? String(error) };
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
@@ -128,7 +128,7 @@ export const gameStore = {
   },
 
   async endGame(gameId: string) {
-    data.isLoading = true;
+    isLoading = true;
     try {
       const result = await new GameService().endGame(gameId);
       if (result.success) {
@@ -141,7 +141,7 @@ export const gameStore = {
       console.error("Error ending game:", error);
       return { success: false, error: error?.message ?? String(error) };
     } finally {
-      data.isLoading = false;
+      isLoading = false;
     }
   },
 
@@ -149,7 +149,7 @@ export const gameStore = {
   async fetchAvailableTablas() {
     try {
       const tablas = await new GameService().getAvailableTablas();
-      data.availableTablas = tablas;
+      availableTablas = tablas;
     } catch (error) {
       console.error("Error fetching available tablas:", error);
     }

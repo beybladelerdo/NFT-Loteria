@@ -12,33 +12,31 @@
   import { userStore } from "$lib/stores/user-store";
   import type { Profile } from "../../../../declarations/backend/backend.did";
   import SetUsername from "$lib/components/profile/set-username.svelte";
-
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import Toasts from "$lib/components/shared/toasts/toasts.svelte";
   import { get } from "svelte/store";
-  import Header from "$lib/shared/header.svelte";
-  import Sidebar from "$lib/shared/sidebar.svelte";
-
+  import Header from "$lib/components/shared/header.svelte";
+  import Sidebar from "$lib/components/shared/sidebar.svelte";
   import "../../app.css";
-
+  
   interface Props {
     children: Snippet;
   }
+  
   let { children }: Props = $props();
-
   let worker: { syncAuthIdle: (auth: AuthStoreData) => void } | undefined;
   let isLoading = $state(true);
   let isMenuOpen = $state(false);
   let hasProfile = $state(false);
   let user: Profile | undefined = $state(undefined);
   let isSigningIn = $state(false);
-
+  
   const init = async () => {
     if (!browser) return;
     await authStore.sync();
     displayAndCleanLogoutMsg();
   };
-
+  
   async function ensureSignedIn() {
     if (!browser) return;
     if (isSigningIn) return;
@@ -47,6 +45,8 @@
       isLoading = true;
       try {
         await signIn({});
+        await checkProfile();
+        isSigningIn = false;
       } catch (e) {
         console.error("signIn failed", e);
         isSigningIn = false;
@@ -54,32 +54,29 @@
       }
     }
   }
-
+  
   onMount(async () => {
     if (browser) document.querySelector("#app-spinner")?.remove();
     await init();
     worker = await initAuthWorker();
-
     const identity = get(authStore).identity;
     if (!identity) {
       await ensureSignedIn();
       return;
     }
-
     await checkProfile();
-    isLoading = false;
   });
-
+  
   function toggleMenu() {
     isMenuOpen = !isMenuOpen;
   }
-
+  
   $effect(() => {
-    if (browser && !$authSignedInStore) {
-      ensureSignedIn();
+    if (browser && $authSignedInStore && !user && !isSigningIn) {
+      checkProfile();
     }
   });
-
+  
   async function checkProfile() {
     try {
       isLoading = true;
@@ -87,30 +84,30 @@
       hasProfile = user != undefined;
     } catch (err) {
       console.error("Error fetching profile:", err);
+      hasProfile = false;
     } finally {
       isLoading = false;
     }
   }
-
+  
   async function userCreated() {
-    checkProfile();
+    await checkProfile();
   }
 </script>
 
 <svelte:window on:storage={authStore.sync} />
-
 {#if browser && isLoading}
   <div in:fade>
     <Spinner />
   </div>
 {:else if $authSignedInStore}
   {#if user}
-    <Header {toggleMenu} />
-    <Sidebar {toggleMenu} {isMenuOpen} {hasProfile} />
-    {@render children()}
-  {:else}
-    <SetUsername {userCreated} />
-  {/if}
+  <Header {toggleMenu} {user} />
+  <Sidebar {toggleMenu} {isMenuOpen} {user} />
+  {@render children()}
+{:else}
+  <SetUsername {userCreated} />
+{/if}
   <Toasts />
 {:else}
   <div in:fade>
