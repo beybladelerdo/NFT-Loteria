@@ -17,6 +17,7 @@ module Enums {
   public type TokenType = {
     #ICP;
     #ckBTC;
+    #gldt;
   };
 
   // Rarity types

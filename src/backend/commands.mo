@@ -39,4 +39,18 @@ module Commands {
     tablaId : Ids.TablaId;
     newFee : Nat;
   };
+
+  public type CreateTabla = {
+    tablaId : Nat32;
+    cards : [Nat];
+    rarity : Enums.Rarity;
+    imageUrl : Text;
+  };
+  public type UpdateTablaMetadata = {
+    tablaId : Nat32;
+    name : ?Text;
+    description : ?Text;
+    imageUrl : ?Text;
+    cards : ?[Nat];
+  };
 };

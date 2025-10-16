@@ -21,7 +21,10 @@ import Utils "utilities";
 import Ids "ids";
 import Commands "commands";
 import Queries "queries";
+import {migration} "migration";
 
+
+(with migration)
 persistent actor GameLogic {
 
   type Entry = (Nat32, Text);
@@ -114,6 +117,18 @@ persistent actor GameLogic {
     switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, caller)) {
       case null { #err("no profile found") };
       case (?profile) { #ok(profile) };
+    };
+  };
+
+  public query func getPlayerProfile(t:Text) :async Result.Result<T.Profile,Text>{
+    switch (Map.get<Text, Principal>(tags, Text.compare, t)){
+      case null { #err("No Principal associated with tag")};
+      case (?p) {
+        switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, p)) {
+          case null { #err("no profile found") };
+          case (?profile) { #ok(profile) };
+        };
+      };
     };
   };
   public shared ({ caller }) func createProfile(tag : Text) : async Result.Result<(), Text> {
@@ -283,7 +298,7 @@ persistent actor GameLogic {
             from_subaccount = ?Account.principalToSubaccount(caller);
             to = Principal.toBlob(Principal.fromActor(GameLogic));
             amount = { e8s = Nat64.fromNat(game.entryFee * 100_000_000) };
-            fee = { e8s = 10_000 }; // Standard transaction fee
+            fee = { e8s = 10_000 }; 
             memo = 0;
             created_at_time = ?{
               timestamp_nanos = Nat64.fromNat(Int.abs(Time.now()));
@@ -528,6 +543,7 @@ persistent actor GameLogic {
     };
   };
 
+
   public shared ({ caller }) func endGame(gameId : Text) : async Result.Result<(), Text> {
     switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
       case null { #err("Game not found") };
@@ -557,6 +573,110 @@ persistent actor GameLogic {
     );
     #ok(());
   };
+  public shared ({ caller }) func deleteTabla(tablaId : Nat32) : async Result.Result<(), Text> {
+  if (not isAdmin(caller)) return #err("unauthorized");
+  
+  switch (Map.take<Nat32, T.Tabla>(tablas, Nat32.compare, tablaId)) {
+    case (?_) { #ok(()) };
+    case null { #err("Tabla not found") };
+  };
+};
+
+  func adminCreateTabla(dto : Commands.CreateTabla, caller: Principal ) : async* Result.Result<Nat32, Text> {
+    if (not isAdmin(caller)) return #err("unauthorized");
+    
+    if (Array.size(dto.cards) != Constants.TABLA_SIZE * Constants.TABLA_SIZE) {
+      return #err("Invalid card layout: must have exactly 16 cards");
+    };
+
+    for (cardId in Array.values(dto.cards)) {
+      if (cardId < 1 or cardId > Constants.TOTAL_CARDS) {
+        return #err("Invalid card ID: must be between 1-54");
+      };
+    };
+    switch (Map.get<Nat32, T.Tabla>(tablas, Nat32.compare, dto.tablaId)) {
+      case (?_) { return #err("Tabla already exists") };
+      case null {};
+    };
+
+    let ownerAccountId = switch (Map.get<Nat32, Text>(owners, Nat32.compare, dto.tablaId)) {
+      case (?accountId) { accountId };
+      case null { return #err("Owner not found in registry. Run refreshRegistry() first.") };
+    };
+    
+    let rentalFee = switch (dto.rarity) {
+      case (#common) { 10_000_000 }; // 0.1 ICP
+      case (#uncommon) { 20_000_000 }; // 0.2 ICP
+      case (#rare) { 50_000_000 }; // 0.5 ICP
+      case (#epic) { 100_000_000 }; // 1 ICP
+      case (#legendary) { 200_000_000 }; // 2 ICP
+    };
+    
+    let metadata : T.TablaMetadata = {
+      name = "Tabla #" # Nat.toText(Nat32.toNat(dto.tablaId));
+      description = "A crypto-themed lotería tabla with unique card combinations";
+      image = dto.imageUrl;
+      cards = dto.cards;
+    };
+    
+    let newTabla : T.Tabla = {
+      id = dto.tablaId;
+      owner = ownerAccountId;
+      renter = null;
+      gameId = null;
+      rentalFee = rentalFee;
+      tokenType = #ICP;
+      rarity = dto.rarity;
+      metadata = metadata;
+      rentalHistory = [];
+      status = #available;
+      createdAt = Time.now();
+      updatedAt = Time.now();
+    };
+    
+    Map.add<Nat32, T.Tabla>(tablas, Nat32.compare, dto.tablaId, newTabla);
+    #ok(dto.tablaId);
+  };
+  public shared ({ caller }) func adminBatchTablas(dtos : [Commands.CreateTabla]) : async Result.Result<[Nat32], Text> {
+  if (not isAdmin(caller)) return #err("unauthorized");
+  
+  let results = List.empty<Nat32>();
+  var errors : Text = "";
+  
+  for (dto in Array.values(dtos)) {
+    switch (await* adminCreateTabla( dto, caller)) {
+      case (#ok(id)) { List.add<Nat32>(results, id) };
+      case (#err(e)) { errors := errors # "Tabla " # Nat32.toText(dto.tablaId) # ": " # e # "; " };
+    };
+  };
+  
+  if (errors != "") {
+    return #err(errors);
+  };
+  
+  #ok(List.toArray(results));
+};
+public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTablaMetadata) : async Result.Result<(), Text> {
+  if (not isAdmin(caller)) return #err("unauthorized");
+  
+  let ?tabla = Map.get<Nat32, T.Tabla>(tablas, Nat32.compare, dto.tablaId) else return #err("Tabla not found");
+  
+  let updatedMetadata = {
+    name = switch (dto.name) { case (?n) n; case null tabla.metadata.name };
+    description = switch (dto.description) { case (?d) d; case null tabla.metadata.description };
+    image = switch (dto.imageUrl) { case (?i) i; case null tabla.metadata.image };
+    cards = switch (dto.cards) { case (?c) c; case null tabla.metadata.cards };
+  };
+  
+  Map.add<Nat32, T.Tabla>(
+    tablas,
+    Nat32.compare,
+    dto.tablaId,
+    { tabla with metadata = updatedMetadata; updatedAt = Time.now() }
+  );
+  
+  #ok(());
+};
 
   /* ----- Tabla Queries ----- */
 
@@ -609,5 +729,8 @@ persistent actor GameLogic {
   public query func getTablaCards(tablaId : Ids.TablaId) : async Result.Result<[Nat], Text> {
     let ?tabla = Map.get<Ids.TablaId, T.Tabla>(tablas, Nat32.compare, tablaId) else return #err("NotFound");
     #ok(tabla.metadata.cards);
+  };
+  public query func tablaCount() : async Nat {
+    Map.size(tablas);
   };
 };
