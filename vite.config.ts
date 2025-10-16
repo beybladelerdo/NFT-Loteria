@@ -35,9 +35,12 @@ const readCanisterIds = ({
     return Object.entries(config).reduce((acc, current: [string, Details]) => {
       const [canisterName, canisterDetails] = current;
 
+      // Replace hyphens with underscores for valid JavaScript identifiers
+      const sanitizedName = canisterName.replace(/-/g, "_");
+
       return {
         ...acc,
-        [`${prefix ?? ""}${canisterName.toUpperCase()}_CANISTER_ID`]:
+        [`${prefix ?? ""}${sanitizedName.toUpperCase()}_CANISTER_ID`]:
           canisterDetails[network as keyof Details],
       };
     }, {});
@@ -61,6 +64,9 @@ const config: UserConfig = {
   },
   build: {
     target: "es2020",
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -85,6 +91,10 @@ const config: UserConfig = {
           }
 
           return "index";
+        },
+        // Sanitize file names to replace hyphens with underscores
+        sanitizeFileName(name) {
+          return name.replace(/-/g, "_");
         },
       },
       plugins: [
