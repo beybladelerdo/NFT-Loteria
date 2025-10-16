@@ -2,85 +2,131 @@
   import { goto } from "$app/navigation";
   import { signOut } from "$lib/services/auth-services";
   import type { Profile } from "../../../../../declarations/backend/backend.did";
-  
+
   interface Props {
     isMenuOpen: boolean;
     toggleMenu: () => void;
     user: Profile;
   }
-  
+
   let { isMenuOpen, toggleMenu, user }: Props = $props();
-  
+
   const menuItems = [
     { path: "/dashboard", label: "Dashboard" },
     { path: "/join-game", label: "Join Game" },
     { path: "/host-game", label: "Host Game" },
     { path: "/profile", label: "Profile" },
   ];
-  
+
   async function handleSignOut() {
     await signOut();
     toggleMenu();
   }
-  
+
   function navigate(path: string) {
     toggleMenu();
     goto(path);
   }
+
+  function formatWinRate(rate: number): string {
+    return `${(rate * 100).toFixed(1)}%`;
+  }
 </script>
 
 <div
-  class="{isMenuOpen ? 'translate-x-0' : 'translate-x-full'} lg:hidden fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-black border-l border-white/10 shadow-2xl transform transition-transform duration-300 ease-in-out font-freigeist"
+  class="{isMenuOpen
+    ? 'translate-x-0'
+    : 'translate-x-full'} lg:hidden fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-[#ED1E79] border-l-4 border-black shadow-2xl transform transition-transform duration-300 ease-in-out"
 >
-  <!-- Close Button -->
-  <button
-    onclick={toggleMenu}
-    class="absolute top-4 right-4 p-2 text-white hover:bg-white/5 rounded-full transition"
-    aria-label="Close menu"
+  <!-- Window Title Bar -->
+  <div
+    class="bg-[#29ABE2] p-3 border-b-4 border-black flex items-center justify-between"
   >
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  </button>
-  
-  <!-- User Info -->
-  <div class="pt-16 px-6 pb-6 border-b border-white/10">
+    <div class="flex items-center gap-2">
+      <div class="w-4 h-4 bg-red-500 border-2 border-black"></div>
+      <div class="w-4 h-4 bg-[#FBB03B] border-2 border-black"></div>
+      <div class="w-4 h-4 bg-green-500 border-2 border-black"></div>
+      <span class="ml-2 text-black font-black text-sm uppercase">MENU.EXE</span>
+    </div>
+    <button
+      onclick={toggleMenu}
+      class="p-1 bg-red-500 border-2 border-black hover:bg-red-600"
+      aria-label="Close menu"
+    >
+      <svg
+        class="w-4 h-4 stroke-white"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        stroke-width="4"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
+  </div>
+
+  <!-- User Info Panel -->
+  <div class="p-6 bg-white border-b-4 border-black">
     <div class="flex items-center gap-3">
-      <div class="w-12 h-12 rounded-full bg-violet-500 flex items-center justify-center text-black font-bold text-xl">
+      <div
+        class="w-16 h-16 bg-[#522785] border-4 border-black flex items-center justify-center text-white font-black text-2xl"
+        style="box-shadow: 4px 4px 0 #FBB03B;"
+      >
         {user.username[0].toUpperCase()}
       </div>
       <div class="flex-1 min-w-0">
-        <p class="text-white font-medium truncate">@{user.username}</p>
-        <p class="text-sm text-gray-400">
-          {user.games} games • {user.wins} wins
+        <p
+          class="text-black font-black truncate text-lg"
+          style="text-shadow: 2px 2px 0px #29ABE2;"
+        >
+          @{user.username}
         </p>
+        <div class="flex gap-2 mt-1 flex-wrap">
+          <span
+            class="text-xs bg-[#FBB03B] border border-black px-2 py-0.5 font-bold text-black"
+          >
+            {user.games} GAMES
+          </span>
+          <span
+            class="text-xs bg-[#29ABE2] border border-black px-2 py-0.5 font-bold text-black"
+          >
+            {user.wins} WINS
+          </span>
+        </div>
       </div>
     </div>
   </div>
-  
-  <!-- Navigation -->
-  <nav class="px-4 py-4">
-    <ul class="space-y-1">
+
+  <!-- Navigation Menu -->
+  <nav class="p-4">
+    <ul class="space-y-2">
       {#each menuItems as item}
         <li>
           <button
             onclick={() => navigate(item.path)}
-            class="w-full text-left px-4 py-3 text-white hover:bg-violet-500/20 rounded-lg transition font-medium"
+            class="w-full text-left px-4 py-3 bg-white border-2 border-black font-bold text-black text-bold uppercase text-sm hover:bg-[#FBB03B] transition flex items-center justify-between"
+            style="box-shadow: 3px 3px 0 #000;"
           >
-            {item.label}
+            <span>{item.label}</span>
+            <span>&gt;&gt;</span>
           </button>
         </li>
       {/each}
     </ul>
   </nav>
-  
-  <!-- Sign Out -->
+
+  <!-- Sign Out Button -->
   <div class="absolute bottom-6 left-4 right-4">
     <button
       onclick={handleSignOut}
-      class="w-full px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition font-medium"
+      class="w-full px-4 py-4 bg-red-500 text-white border-4 border-black font-black uppercase hover:bg-red-600 transition"
+      style="box-shadow: 4px 4px 0 #000;"
     >
-      Sign Out
+      SIGN OUT
     </button>
   </div>
 </div>
