@@ -12,6 +12,7 @@ import { isError } from "$lib/utils/helpers";
 
 export interface AuthStoreData {
   identity: OptionIdentity;
+  isAuthenticated: boolean;
 }
 
 let authClient: AuthClient | undefined | null;
@@ -38,6 +39,7 @@ export interface AuthStore extends Readable<AuthStoreData> {
 const initAuthStore = (): AuthStore => {
   const { subscribe, set, update } = writable<AuthStoreData>({
     identity: undefined,
+    isAuthenticated: false,
   });
 
   return {
@@ -49,6 +51,7 @@ const initAuthStore = (): AuthStore => {
 
       set({
         identity: isAuthenticated ? authClient.getIdentity() : null,
+        isAuthenticated,
       });
     },
 
@@ -62,6 +65,7 @@ const initAuthStore = (): AuthStore => {
             update((state: AuthStoreData) => ({
               ...state,
               identity: authClient?.getIdentity(),
+              isAuthenticated: true,
             }));
             resolve();
           },
@@ -89,6 +93,7 @@ const initAuthStore = (): AuthStore => {
       update((state: AuthStoreData) => ({
         ...state,
         identity: null,
+        isAuthenticated: false,
       }));
       localStorage.removeItem("user_profile_data");
     },

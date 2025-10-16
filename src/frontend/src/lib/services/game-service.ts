@@ -2,30 +2,27 @@ import { ActorFactory } from "../utils/ActorFactory";
 import { authStore } from "$lib/stores/auth-store";
 import type {
   _SERVICE,
-  // Records / variants
   GameView,
+  Profile,
   TablaInfo,
-  GameMode, // { line: null } | { blackout: null }
-  TokenType, // { ICP: null } | { ckBTC: null }
-  Position, // { row: bigint; col: bigint }
-  // DTOs
-  GetOpenGames, // { page: bigint }
-  GetActiveGames, // { page: bigint }
-  GetGame, // { gameId: string }
-  JoinGame, // { gameId: string; rentedTablaId: number }
-  UpdateTablaRentalFee, // { tablaId: number; newFee: bigint }
-  // Results
-  Result, // { ok: null } | { err: string }
-  Result_1, // getTablaCards
-  Result_2, // getTabla
-  Result_3, // getProfile (unused here)
-  Result_4, // getOpenGames
-  Result_5, // getGame
-  Result_6, // getDrawHistory
-  Result_7, // getAvailableTablas
-  Result_8, // getActiveGames
-  Result_9, // drawCard
-  Result_10, // createGame
+  GameMode,
+  TokenType,
+  Position,
+  GetOpenGames,
+  GetActiveGames,
+  GetGame,
+  JoinGame,
+  UpdateTablaRentalFee,
+  Result,
+  Result_1,
+  Result_2,
+  Result_4,
+  Result_5,
+  Result_6,
+  Result_7,
+  Result_8,
+  Result_9,
+  Result_10,
 } from "../../../../declarations/backend/backend.did";
 
 const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
@@ -46,12 +43,33 @@ export interface CreateGameParams {
   name: string;
   mode: "Line" | "Blackout";
   tokenType: "ICP" | "ckBTC";
-  /**
-   * Entry fee is an INTEGER count of whole tokens (ICP or ckBTC).
-   * (Backend multiplies by 1e8 internally for ICP transfers.)
-   */
   entryFee: number;
-  hostFeePercent: number; // 0..20 enforced by backend
+  hostFeePercent: number;
+}
+
+export interface CreateTablaParams {
+  tablaId: number;
+  cards: number[];
+  rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
+  imageUrl: string;
+}
+
+export type Rarity =
+  | { common: null }
+  | { uncommon: null }
+  | { rare: null }
+  | { epic: null }
+  | { legendary: null };
+
+function parseRarity(rarity: string): Rarity {
+  const normalized = rarity.toLowerCase().trim();
+  if (normalized === "uncommon party hats") return { uncommon: null };
+  if (normalized === "common") return { common: null };
+  if (normalized === "uncommon") return { uncommon: null };
+  if (normalized === "rare") return { rare: null };
+  if (normalized === "epic") return { epic: null };
+  if (normalized === "legendary") return { legendary: null };
+  return { common: null }; // default
 }
 
 export class GameService {
@@ -102,6 +120,17 @@ export class GameService {
       return null;
     }
   }
+  async getProfileByTag(tag: string): Promise<Profile | null> {
+    try {
+      const actor = await this.getActor();
+      const res = await actor.getPlayerProfile(tag);
+      if ("err" in res) return null;
+      return res.ok;
+    } catch (e) {
+      console.error("getProfileByTag failed:", e);
+      return null;
+    }
+  }
 
   // ---------- Game lifecycle ----------
 
@@ -109,7 +138,6 @@ export class GameService {
     params: CreateGameParams,
   ): Promise<{ success: boolean; gameId?: string; error?: string }> {
     try {
-      // entryFee must be an integer nat
       if (!Number.isInteger(params.entryFee) || params.entryFee < 0) {
         return {
           success: false,
@@ -182,7 +210,6 @@ export class GameService {
       const actor = await this.getActor();
       const res: Result_9 = await actor.drawCard(gameId);
       if ("err" in res) return { success: false, error: res.err };
-      // CardId is nat32 → number
       return { success: true, cardId: Number(res.ok) };
     } catch (e: any) {
       console.error("drawCard failed:", e);
@@ -201,6 +228,7 @@ export class GameService {
       return [];
     }
   }
+  
 
   async claimWin(
     gameId: string,
@@ -290,6 +318,80 @@ export class GameService {
       return { success: true };
     } catch (e: any) {
       console.error("markPosition failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  // ---------- Admin Functions ----------
+
+  async refreshRegistry(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      await actor.refreshRegistry();
+      return { success: true };
+    } catch (e: any) {
+      console.error("refreshRegistry failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async bootstrapAdmin(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.bootstrapAdmin();
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("bootstrapAdmin failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async adminBatchTablas(
+    tablas: CreateTablaParams[],
+  ): Promise<{ success: boolean; created?: number[]; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const dtos = tablas.map((t) => ({
+        tablaId: t.tablaId,
+        cards: t.cards.map((c) => BigInt(c)),
+        rarity: parseRarity(t.rarity),
+        imageUrl: t.imageUrl,
+      }));
+
+      const res = await actor.adminBatchTablas(dtos);
+      if ("err" in res) return { success: false, error: res.err };
+      return {
+        success: true,
+        created: Array.from(res.ok).map((id) => Number(id)),
+      };
+    } catch (e: any) {
+      console.error("adminBatchTablas failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async tablaCount(): Promise<number> {
+    try {
+      const actor = await this.getActor();
+      const count = await actor.tablaCount();
+      return Number(count);
+    } catch (e) {
+      console.error("tablaCount failed:", e);
+      return 0;
+    }
+  }
+
+  async deleteTabla(
+    tablaId: number,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.deleteTabla(tablaId);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("deleteTabla failed:", e);
       return { success: false, error: e?.message ?? String(e) };
     }
   }

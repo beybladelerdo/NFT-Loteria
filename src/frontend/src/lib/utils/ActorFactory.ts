@@ -1,22 +1,25 @@
-// src/utils/ActorFactory.ts
 import type { AuthStore } from "$lib/stores/auth-store";
 import type { OptionIdentity } from "$lib/types/identity";
 import { Actor, HttpAgent } from "@dfinity/agent";
-import type { Unsubscriber } from "svelte/store";
+import { get } from "svelte/store";
 import { idlFactory as canister } from "../../../../declarations/backend";
 
 export class ActorFactory {
-  static createActor(
+  static async createActor(
     idlFactory: any,
     canisterId: string = "",
     identity: OptionIdentity = null,
     options: any = null,
   ) {
+    const isDev =
+      import.meta.env.DEV ||
+      import.meta.env.MODE === "development" ||
+      import.meta.env.VITE_DFX_NETWORK === "local" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
     const hostOptions = {
-      host:
-        process.env.DFX_NETWORK === "ic"
-          ? `https://${canisterId}.icp-api.io`
-          : `http://localhost:4943/?canisterId=qhbym-qaaaa-aaaaa-aaafq-cai`,
+      host: isDev ? `http://localhost:4943` : `https://ic0.app`,
       identity: identity,
     };
 
@@ -32,13 +35,15 @@ export class ActorFactory {
 
     const agent = new HttpAgent({ ...options.agentOptions });
 
-    if (process.env.DFX_NETWORK !== "ic") {
-      agent.fetchRootKey().catch((err) => {
-        console.warn(
-          "Unable to fetch root key. Ensure your local replica is running",
-        );
-        console.error(err);
-      });
+    if (isDev) {
+      console.log("🔑 Fetching root key for local development...");
+      try {
+        await agent.fetchRootKey();
+        console.log("✅ Root key fetched successfully");
+      } catch (err) {
+        console.error("❌ Failed to fetch root key:", err);
+        throw err;
+      }
     }
 
     return Actor.createActor(idlFactory, {
@@ -48,16 +53,20 @@ export class ActorFactory {
     });
   }
 
-  static getAgent(
+  static async getAgent(
     canisterId: string = "",
     identity: OptionIdentity = null,
     options: any = null,
-  ): HttpAgent {
+  ): Promise<HttpAgent> {
+    const isDev =
+      import.meta.env.DEV ||
+      import.meta.env.MODE === "development" ||
+      import.meta.env.VITE_DFX_NETWORK === "local" ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
     const hostOptions = {
-      host:
-        process.env.DFX_NETWORK === "ic"
-          ? `https://${canisterId}.icp-api.io`
-          : `http://localhost:4943/?canisterId=b77ix-eeaaa-aaaaa-qaada-cai`,
+      host: isDev ? `http://localhost:4943` : `https://ic0.app`,
       identity: identity,
     };
 
@@ -71,46 +80,24 @@ export class ActorFactory {
       options.agentOptions.host = hostOptions.host;
     }
 
-    return new HttpAgent({ ...options.agentOptions });
-  }
+    const agent = new HttpAgent({ ...options.agentOptions });
 
-  static createIdentityActor(authStore: AuthStore, canisterId: string) {
-    let unsubscribe: Unsubscriber;
-    return new Promise<OptionIdentity>((resolve, reject) => {
-      unsubscribe = authStore.subscribe((store) => {
-        if (store.identity) {
-          resolve(store.identity);
-        }
-      });
-    }).then((identity) => {
-      unsubscribe();
-      return ActorFactory.createActor(canister, canisterId, identity);
-    });
-  }
-
-  static getGovernanceAgent(
-    identity: OptionIdentity = null,
-    options: any = null,
-  ): HttpAgent {
-    let canisterId = process.env.CANISTER_ID_SNS_GOVERNANCE;
-    const hostOptions = {
-      host:
-        process.env.DFX_NETWORK === "ic"
-          ? `https://${canisterId}.icp-api.io`
-          : `http://localhost:4943/?canisterId=${canisterId}`,
-      identity: identity,
-    };
-
-    if (!options) {
-      options = {
-        agentOptions: hostOptions,
-      };
-    } else if (!options.agentOptions) {
-      options.agentOptions = hostOptions;
-    } else {
-      options.agentOptions.host = hostOptions.host;
+    if (isDev) {
+      await agent.fetchRootKey();
     }
 
-    return new HttpAgent({ ...options.agentOptions });
+    return agent;
+  }
+
+  static async createIdentityActor(authStore: AuthStore, canisterId: string) {
+    // Use get() to read the store value directly - much simpler!
+    const store = get(authStore);
+    const identity = store.identity;
+
+    if (!identity) {
+      throw new Error("No identity found in auth store");
+    }
+
+    return await ActorFactory.createActor(canister, canisterId, identity);
   }
 }

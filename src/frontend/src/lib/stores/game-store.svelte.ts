@@ -3,7 +3,10 @@ import type {
   GameView,
   TablaInfo,
 } from "../../../../declarations/backend/backend.did";
-import type { CreateGameParams } from "$lib/services/game-service";
+import type {
+  CreateGameParams,
+  CreateTablaParams,
+} from "$lib/services/game-service";
 
 export interface GameStoreData {
   openGames: GameView[];
@@ -20,11 +23,21 @@ let availableTablas = $state<TablaInfo[]>([]);
 let isLoading = $state(false);
 
 export const gameStore = {
-  get openGames() { return openGames; },
-  get activeGames() { return activeGames; },
-  get currentGame() { return currentGame; },
-  get availableTablas() { return availableTablas; },
-  get isLoading() { return isLoading; },
+  get openGames() {
+    return openGames;
+  },
+  get activeGames() {
+    return activeGames;
+  },
+  get currentGame() {
+    return currentGame;
+  },
+  get availableTablas() {
+    return availableTablas;
+  },
+  get isLoading() {
+    return isLoading;
+  },
 
   // -------- Lists --------
   async fetchOpenGames(page = 0) {
@@ -176,5 +189,63 @@ export const gameStore = {
   },
   refreshTablas() {
     gameStore.fetchAvailableTablas();
+  },
+  async refreshRegistry() {
+    try {
+      const result = await new GameService().refreshRegistry();
+      return result;
+    } catch (error: any) {
+      console.error("Error refreshing registry:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+
+  async bootstrapAdmin() {
+    try {
+      const result = await new GameService().bootstrapAdmin();
+      return result;
+    } catch (error: any) {
+      console.error("Error bootstrapping admin:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+
+  async batchLoadTablas(tablas: CreateTablaParams[]) {
+    isLoading = true;
+    try {
+      const result = await new GameService().adminBatchTablas(tablas);
+      if (result.success) {
+        await gameStore.refreshTablas();
+        return { success: true, created: result.created };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error batch loading tablas:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
+    }
+  },
+
+  async getTablaCount() {
+    try {
+      return await new GameService().tablaCount();
+    } catch (error) {
+      console.error("Error getting tabla count:", error);
+      return 0;
+    }
+  },
+
+  async deleteTabla(tablaId: number) {
+    try {
+      const result = await new GameService().deleteTabla(tablaId);
+      if (result.success) {
+        await gameStore.refreshTablas();
+      }
+      return result;
+    } catch (error: any) {
+      console.error("Error deleting tabla:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
   },
 };

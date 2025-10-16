@@ -15,7 +15,7 @@ function createUserStore() {
   async function updateTag(newTag: string): Promise<void> {
     return svc.updateTag(newTag);
   }
-  async function isTagAvailable(tag: string): Promise<boolean>{
+  async function isTagAvailable(tag: string): Promise<boolean> {
     return svc.isTagAvailable(tag);
   }
 
@@ -23,7 +23,7 @@ function createUserStore() {
     getProfile,
     createProfile,
     updateTag,
-    isTagAvailable
+    isTagAvailable,
   };
 }
 
