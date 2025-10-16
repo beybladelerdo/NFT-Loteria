@@ -6,15 +6,15 @@
 
     <title>NFT Loteria</title>
     <link href="https://btcbingo.fun" rel="canonical" />
-    <meta content="BTC Bingo" name="description" />
-    <meta content="BTC Bingo" property="og:title" />
-    <meta content="BTC Bingo" property="og:description" />
+    <meta content="NFT Loteria" name="description" />
+    <meta content="NFT Loteria" property="og:title" />
+    <meta content="NFT Loteria" property="og:description" />
     <meta content="website" property="og:type" />
     <meta content="https://btcbingo.fun" property="og:url" />
     <meta content="https://btcbingo.fun/meta-share.jpg" property="og:image" />
     <meta content="summary_large_image" name="twitter:card" />
-    <meta content="BTC Bingo" name="twitter:title" />
-    <meta content="BTC Bingo" name="twitter:description" />
+    <meta content="NFT Loteria" name="twitter:title" />
+    <meta content="NFT Loteria" name="twitter:description" />
     <meta content="https://btcbingo.fun/meta-share.jpg" name="twitter:image" />
     <meta content="@ICPLoteria" name="twitter:creator" />
 
@@ -24,21 +24,27 @@
     <link
       rel="icon"
       type="image/png"
-      sizes="32x32"
-      href="%sveltekit.assets%/favicons/favicon-32x32.png"
+      href="%sveltekit.assets%/favicons/favicon-96x96.png"
+      sizes="96x96"
     />
     <link
       rel="icon"
-      type="image/png"
-      sizes="16x16"
-      href="%sveltekit.assets%/favicons/favicon-16x16.png"
+      type="image/svg+xml"
+      href="%sveltekit.assets%/favicons/favicon.svg"
     />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="%sveltekit.assets%/favicons/apple-touch-icon.png"
+    />
+    <link rel="manifest" href="%sveltekit.assets%/favicons/site.webmanifest" />
+
     <link rel="shortcut icon" href="%sveltekit.assets%/favicons/favicon.ico" />
 
     <!-- iOS meta tags & icons -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="#1a1a1d" />
-    <meta name="apple-mobile-web-app-title" content="BTC Bingo" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="#ED1E79" />
+    <meta name="apple-mobile-web-app-title" content="NFT Loteria" />
     <link
       rel="apple-touch-icon"
       href="%sveltekit.assets%/favicons/apple-touch-icon.png"
@@ -46,67 +52,26 @@
     <link
       rel="mask-icon"
       href="%sveltekit.assets%/favicons/safari-pinned-tab.svg"
-      color="#1a1a1d"
+      color="#ED1E79"
     />
 
     <!-- MS -->
-    <meta name="msapplication-TileColor" content="#1a1a1d" />
+    <meta name="msapplication-TileColor" content="#ED1E79" />
     <meta
       name="msapplication-config"
       content="%sveltekit.assets%/favicons/browserconfig.xml"
     />
 
-    <meta content="#1a1a1d" name="theme-color" />
+    <meta content="#ED1E79" name="theme-color" />
 
     <link
       rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-LightItalic.woff2"
+      href="%sveltekit.assets%/AmigaNormal.woff2"
       as="font"
       type="font/woff2"
       crossorigin="anonymous"
     />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-Light.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-Regular.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-MediumItalic.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-Bold.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-BoldItalic.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="preload"
-      href="%sveltekit.assets%/FreigeistXCon-Black.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
+
     %sveltekit.head%
 
     <style>
@@ -117,203 +82,24 @@
       }
 
       body {
-        font-family: sans-serif !important;
+        font-family: amiga !important;
         color: white !important;
-        background-color: #1a1a1d;
+        background-color: #ed1e79;
         height: 100vh;
         margin: 0;
       }
 
       @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-LightItalic.woff2")
-          format("woff2");
-        font-weight: 300;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-Light.woff2") format("woff2");
-        font-weight: 300;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-Regular.woff2")
-          format("woff2");
+        font-family: "Amiga";
+        src: url("%sveltekit.assets%/AmigaNormal.woff2") format("woff2");
         font-weight: 400;
         font-style: normal;
         font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-MediumItalic.woff2")
-          format("woff2");
-        font-weight: 500;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-Bold.woff2") format("woff2");
-        font-weight: 700;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-BoldItalic.woff2")
-          format("woff2");
-        font-weight: 700;
-        font-style: italic;
-        font-display: swap;
-      }
-
-      @font-face {
-        font-family: "FreigeistXCon";
-        src: url("%sveltekit.assets%/FreigeistXCon-Black.woff2") format("woff2");
-        font-weight: 900;
-        font-style: normal;
-        font-display: swap;
-      }
-
-      #app-spinner {
-        --spinner-size: 30px;
-
-        width: var(--spinner-size);
-        height: var(--spinner-size);
-
-        animation: app-spinner-linear-rotate 2000ms linear infinite;
-
-        position: absolute;
-        top: calc(50% - (var(--spinner-size) / 2));
-        left: calc(50% - (var(--spinner-size) / 2));
-
-        --radius: 45px;
-        --circumference: calc(3.14159265359 * var(--radius) * 2);
-
-        --start: calc((1 - 0.05) * var(--circumference));
-        --end: calc((1 - 0.8) * var(--circumference));
-      }
-
-      #app-spinner circle {
-        stroke-dasharray: var(--circumference);
-        stroke-width: 10%;
-        transform-origin: 50% 50% 0;
-
-        transition-property: stroke;
-
-        animation-name: app-spinner-stroke-rotate-100;
-        animation-duration: 4000ms;
-        animation-timing-function: cubic-bezier(0.35, 0, 0.25, 1);
-        animation-iteration-count: infinite;
-
-        fill: transparent;
-        stroke: #8b5cf6;;
-        
-
-        transition: stroke-dashoffset 225ms linear;
-      }
-
-      @keyframes app-spinner-linear-rotate {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      @keyframes app-spinner-stroke-rotate-100 {
-        0% {
-          stroke-dashoffset: var(--start);
-          transform: rotate(0);
-        }
-        12.5% {
-          stroke-dashoffset: var(--end);
-          transform: rotate(0);
-        }
-        12.5001% {
-          stroke-dashoffset: var(--end);
-          transform: rotateX(180deg) rotate(72.5deg);
-        }
-        25% {
-          stroke-dashoffset: var(--start);
-          transform: rotateX(180deg) rotate(72.5deg);
-        }
-
-        25.0001% {
-          stroke-dashoffset: var(--start);
-          transform: rotate(270deg);
-        }
-        37.5% {
-          stroke-dashoffset: var(--end);
-          transform: rotate(270deg);
-        }
-        37.5001% {
-          stroke-dashoffset: var(--end);
-          transform: rotateX(180deg) rotate(161.5deg);
-        }
-        50% {
-          stroke-dashoffset: var(--start);
-          transform: rotateX(180deg) rotate(161.5deg);
-        }
-
-        50.0001% {
-          stroke-dashoffset: var(--start);
-          transform: rotate(180deg);
-        }
-        62.5% {
-          stroke-dashoffset: var(--end);
-          transform: rotate(180deg);
-        }
-        62.5001% {
-          stroke-dashoffset: var(--end);
-          transform: rotateX(180deg) rotate(251.5deg);
-        }
-        75% {
-          stroke-dashoffset: var(--start);
-          transform: rotateX(180deg) rotate(251.5deg);
-        }
-
-        75.0001% {
-          stroke-dashoffset: var(--start);
-          transform: rotate(90deg);
-        }
-        87.5% {
-          stroke-dashoffset: var(--end);
-          transform: rotate(90deg);
-        }
-        87.5001% {
-          stroke-dashoffset: var(--end);
-          transform: rotateX(180deg) rotate(341.5deg);
-        }
-        100% {
-          stroke-dashoffset: var(--start);
-          transform: rotateX(180deg) rotate(341.5deg);
-        }
+        font-synthesis: weight style;
       }
     </style>
   </head>
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>
-
-    <svg
-      id="app-spinner"
-      preserveAspectRatio="xMidYMid meet"
-      focusable="false"
-      aria-hidden="true"
-      data-tid="spinner"
-      viewBox="0 0 100 100"
-    >
-      <circle cx="50%" cy="50%" r="45" />
-    </svg>
   </body>
 </html>

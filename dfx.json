@@ -16,6 +16,24 @@
     "internet_identity": {
       "type": "pull",
       "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    },
+    "icp_ledger": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/ledger-suite-icrc-2025-09-01/rs/ledger_suite/icrc1/ledger/ledger.did",
+      "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-09-01/ic-icrc1-ledger.wasm.gz",
+      "remote": { "id": { "ic": "ryjl3-tyaaa-aaaaa-aaaba-cai" } }
+    },
+    "gldt_ledger": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/ledger-suite-icrc-2025-09-01/rs/ledger_suite/icrc1/ledger/ledger.did",
+      "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-09-01/ic-icrc1-ledger.wasm.gz",
+      "remote": { "id": { "ic": "6c7su-kiaaa-aaaar-qaira-cai" } }
+    },
+    "ck-btc_ledger": {
+      "type": "custom",
+      "candid": "https://raw.githubusercontent.com/dfinity/ic/ledger-suite-icrc-2025-09-01/rs/ledger_suite/icrc1/ledger/ledger.did",
+      "wasm": "https://github.com/dfinity/ic/releases/download/ledger-suite-icrc-2025-09-01/ic-icrc1-ledger.wasm.gz",
+      "remote": { "id": { "ic": "mxzaz-hqaaa-aaaar-qaada-cai" } }
     }
   },
   "defaults": {
