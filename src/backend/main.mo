@@ -9,25 +9,24 @@ import Time "mo:core/Time";
 import Result "mo:core/Result";
 import T "types";
 import Constants "constants";
-import Ledger "mo:waterway-mops/base/def/icp-ledger";
-import Account "mo:waterway-mops/base/def/account";
 import Enums "mo:waterway-mops/base/enums";
 import Map "mo:core/Map";
 import Random "mo:core/Random";
 import VarArray "mo:core/VarArray";
 import Array "mo:core/Array";
 import List "mo:core/List";
+import Sha256 "mo:sha2/Sha256";
+import Blob "mo:core/Blob";
+import Escrow "escrow";
 import Utils "utilities";
 import Ids "ids";
 import Commands "commands";
 import Queries "queries";
-import {migration} "migration";
 
-
-(with migration)
 persistent actor GameLogic {
 
   type Entry = (Nat32, Text);
+  type PaidKey = (Text, Principal);
   let burnAddress = "0000000000000000000000000000000000000000000000000000000000000001";
   let ext : actor { getRegistry : shared query () -> async [Entry] } = actor ("psaup-3aaaa-aaaak-qsxlq-cai");
 
@@ -37,6 +36,7 @@ persistent actor GameLogic {
   private var tags = Map.empty<Text, Principal>();
   private var tablas = Map.empty<Nat32, T.Tabla>();
   private var admins = Map.empty<Principal, Bool>();
+  private var paidSet = Map.empty<PaidKey, Bool>();
 
   let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   let digits = Text.toArray("0123456789");
@@ -48,6 +48,19 @@ persistent actor GameLogic {
       case (?_) true;
       case null false;
     }
+  };
+  
+  func paidCmp(a : PaidKey, b : PaidKey) : {#less;#equal;#greater} {
+    let c = Text.compare(a.0, b.0); if (c != #equal) return c;
+    Principal.compare(a.1, b.1);
+  };
+  func hasPaid(gid : Text, p : Principal) : Bool =
+    switch (Map.get(paidSet, paidCmp, (gid, p))) { case (?_) true; case null false };
+  func markPaid(gid : Text, p : Principal) =
+    Map.add(paidSet, paidCmp, (gid, p), true);
+  
+  func prizePoolSubAcc(gameId : Text) : Blob {
+  Sha256.fromArray(#sha256 ,Blob.toArray(Text.encodeUtf8("pot:" # gameId)))
   };
 
   public shared ({ caller }) func bootstrapAdmin() : async Result.Result<(), Text> {
@@ -256,7 +269,7 @@ persistent actor GameLogic {
       tokenType = params.tokenType;
       entryFee = params.entryFee;
       hostFeePercent = params.hostFeePercent;
-      players = [caller]; // Host is automatically a player
+      players = [];
       tablas = [];
       drawnCards = [];
       currentCard = null;
@@ -264,66 +277,76 @@ persistent actor GameLogic {
       winner = null;
       prizePool = 0;
     };
-
     Map.add<Text, T.Game>(games, Text.compare, nextGameId, newGame);
     #ok(newGame.id);
   };
 
   public shared ({ caller }) func joinGame(dto : Commands.JoinGame) : async Result.Result<(), Text> {
+    if (Principal.isAnonymous(caller)) return #err("Anonymous identity cannot join games");
 
-    if (Principal.isAnonymous(caller)) {
-      return #err("Anonymous identity cannot join games");
-    };
+    let ?game = Map.get<Text, T.Game>(games, Text.compare, dto.gameId)
+      else return #err("Game not found");
 
-    switch (Map.get<Text, T.Game>(games, Text.compare, dto.gameId)) {
-      case (null) { #err("Game not found") };
-      case (?game) {
-        if (game.status != #lobby) {
-          return #err("Game is not in lobby state");
+    if (Principal.equal(caller, game.host)) return #err("Host cannot join their own game");
+    if (game.status != #lobby)  return #err("Game is not in lobby state");
+    if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) return #err("Game is full");
+    for (p in game.players.values()) if (Principal.equal(p, caller)) return #err("Player already in game");
+
+    if (not hasPaid(dto.gameId, caller)) {
+      let l       = Escrow.ledgerOf(game.tokenType);
+      let now_ns  = Nat64.fromNat(Int.abs(Time.now()));
+      let from    = Escrow.acct(caller, null);
+      let to      = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(dto.gameId)));
+      let spender = Escrow.acct(Principal.fromActor(GameLogic), null);
+
+      let a = await l.icrc2_allowance({ account = from; spender });
+      switch (a.expires_at) {
+        case (?exp) {
+          if (exp <= now_ns / 1_000_000_000) return #err("Allowance expired; approve again");
         };
+        case null {};
+      };
+      if (a.allowance < game.entryFee)
+        return #err("Allowance too low; approve at least the entry amount");
 
-        if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) {
-          return #err("Game is full");
+      let pulled = await l.icrc2_transfer_from({
+        from; to; amount = game.entryFee;
+        fee = null; memo = null;
+        created_at_time = ?now_ns;
+        spender_subaccount = null
+      });
+
+      switch (pulled) {
+        case (#Ok _)     { markPaid(dto.gameId, caller) };
+        case (#Err err)  {
+          return #err(
+            switch err {
+              case (#InsufficientAllowance)        "Insufficient allowance";
+              case (#InsufficientFunds)            "Insufficient funds";
+              case (#Expired)                      "Transfer expired; try again";
+              case (#TemporarilyUnavailable)       "Ledger temporarily unavailable";
+              case (#BadFee { })      "Bad fee";
+              case (#Duplicate {  })   "Duplicate transfer";
+              case (#BadBurn {  })  "Bad burn";
+              case (#GenericError { message })     "Ledger error: " # message;
+            }
+          );
         };
-        for (player in game.players.values()) {
-          if (Principal.equal(player, caller)) {
-            return #err("Player already in game");
-          };
-        };
-
-        if (game.tokenType == #ICP) {
-          let ledger : Ledger.Interface = actor ("ryjl3-tyaaa-aaaaa-aaaba-cai");
-
-          let paymentResult = await ledger.transfer({
-            from_subaccount = ?Account.principalToSubaccount(caller);
-            to = Principal.toBlob(Principal.fromActor(GameLogic));
-            amount = { e8s = Nat64.fromNat(game.entryFee * 100_000_000) };
-            fee = { e8s = 10_000 }; 
-            memo = 0;
-            created_at_time = ?{
-              timestamp_nanos = Nat64.fromNat(Int.abs(Time.now()));
-            };
-          });
-
-          switch (paymentResult) {
-            case (#Err(e)) { return #err("Payment failed: " # debug_show (e)) };
-            case (#Ok(_)) {};
-          };
-        };
-
-        // Add player to the game
-        let playerlist = List.fromArray<Ids.PlayerId>(game.players);
-        List.add<Ids.PlayerId>(playerlist, caller);
-        let updatedPlayers = List.toArray(playerlist);
-        switch (addTablaToGame(caller, dto.gameId, dto.rentedTablaId)) {
-          case (#ok(r)) { r };
-          case (#err(e)) { return #err(e) };
-        };
-        Map.add<Text, T.Game>(games, Text.compare, dto.gameId, { game with players = updatedPlayers; prizePool = game.prizePool + game.entryFee });
-        #ok(());
       };
     };
+    let playerlist = List.fromArray<Ids.PlayerId>(game.players);
+    List.add<Ids.PlayerId>(playerlist, caller);
+    let updatedPlayers = List.toArray(playerlist);
+
+    switch (addTablaToGame(caller, dto.gameId, dto.rentedTablaId)) {
+      case (#ok _)  {};
+      case (#err e) { return #err(e) };
+    };
+
+    Map.add<Text, T.Game>(games, Text.compare, dto.gameId, { game with players = updatedPlayers });
+    #ok(());
   };
+
 
   func addTablaToGame(caller : Principal, gameId : Text, tablaId : Ids.TablaId) : Result.Result<(), Text> {
 
@@ -382,6 +405,11 @@ persistent actor GameLogic {
         if (game.players.size() < 2) {
           return #err("Need at least 2 players to start");
         };
+        for (p in Array.values(game.players)) {
+        if (not hasPaid(gameId, p)) {
+          return #err("All players must approve/pay before starting");
+        };
+      };
         Map.add<Text, T.Game>(games, Text.compare, gameId, { game with status = #active });
         #ok(());
       };
@@ -425,7 +453,7 @@ persistent actor GameLogic {
           if (i <= Constants.TOTAL_CARDS) { taken[i] := true };
         };
 
-        let remaining = Constants.TOTAL_CARDS - game.drawnCards.size();
+        let remaining =Constants.TOTAL_CARDS - game.drawnCards.size();
         let k : Nat = await* crypto.natRange(0, remaining); // index inside undrawn set
 
         // locate k-th undrawn card
@@ -513,35 +541,68 @@ persistent actor GameLogic {
     };
   };
   public shared ({ caller }) func claimWin(gameId : Text, tablaId : Ids.TablaId) : async Result.Result<(), Text> {
-    switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
-      case null { #err("Game not found") };
-      case (?game) {
-        if (game.status != #active) return #err("Game is not active");
-        if (game.winner != null) return #err("Game already has a winner");
+  let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
+    else return #err("Game not found");
+  if (game.status != #active)        return #err("Game is not active");
+  if (game.winner != null)           return #err("Game already has a winner");
 
-        var owns : Bool = false;
-        for ((p, t) in Array.values<(Ids.PlayerId, Ids.TablaId)>(game.tablas)) {
-          if (p == caller and t == tablaId) { owns := true };
-        };
-        if (not owns) return #err("Player does not own this tabla in this game");
-
-        let drawnSet = Utils.buildDrawnSet(Constants.TOTAL_CARDS, game.drawnCards);
-        let masks = Utils.makeMasks(Constants.TABLA_SIZE);
-
-        let mres = Utils.markMaskFor(game, caller, tablaId, Constants.TABLA_SIZE, drawnSet, cardAt);
-        let #ok mm = mres else { let #err e = mres; return #err(e) };
-
-        let won = switch (game.mode) {
-          case (#line) Utils.hasLine(mm, masks);
-          case (#blackout) Utils.isBlackout(mm, masks);
-        };
-        if (not won) return #err("Win condition not met");
-
-        Map.add<Text, T.Game>(games, Text.compare, gameId, { game with status = #completed; winner = ?caller });
-        #ok(());
-      };
-    };
+  var owns : Bool = false;
+  for ((p, t) in Array.values<(Ids.PlayerId, Ids.TablaId)>(game.tablas)) {
+    if (p == caller and t == tablaId) { owns := true };
   };
+  if (not owns) return #err("Player does not own this tabla in this game");
+
+  let drawnSet = Utils.buildDrawnSet(Constants.TOTAL_CARDS, game.drawnCards);
+  let masks    = Utils.makeMasks(Constants.TABLA_SIZE);
+  let mres     = Utils.markMaskFor(game, caller, tablaId, Constants.TABLA_SIZE, drawnSet, cardAt);
+  let #ok mm   = mres else { let #err e = mres; return #err(e) };
+
+  let won = switch (game.mode) {
+    case (#line)     Utils.hasLine(mm, masks);
+    case (#blackout) Utils.isBlackout(mm, masks);
+  };
+  if (not won) return #err("Win condition not met");
+
+  let l        = Escrow.ledgerOf(game.tokenType);
+  let potAcct  = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+  let pot      = await l.icrc1_balance_of(potAcct);
+
+  if (pot == 0) {
+    Map.add<Text, T.Game>(games, Text.compare, gameId, { game with status = #completed; winner = ?caller });
+    return #ok(());
+  };
+
+  let hostFee      = pot * game.hostFeePercent / 100;
+  let winnerAmount = pot - hostFee;
+
+  let now_ns = Nat64.fromNat(Int.abs(Time.now()));
+  let pay = func (toOwner : Principal, amt : Nat) : async Result.Result<(), Text> {
+    if (amt == 0) return #ok(());
+    let res = await l.icrc1_transfer({
+      from_subaccount = potAcct.subaccount;
+      to              = Escrow.acct(toOwner, null);
+      amount          = amt;
+      fee             = null;
+      memo            = null;
+      created_at_time = ?now_ns
+    });
+    switch (res) { case (#Ok _) #ok(()); case (#Err e) #err("payout failed: " # debug_show e) };
+  };
+
+  switch (await pay(caller, winnerAmount)) {
+    case (#err e) return #err(e);
+    case (#ok ()) {}
+  };
+  switch (await pay(game.host, hostFee)) {
+    case (#err e) return #err(e);
+    case (#ok ()) {}
+  };
+
+  Map.add<Text, T.Game>(games, Text.compare, gameId, { game with status = #completed; winner = ?caller });
+
+  #ok(());
+};
+
 
 
   public shared ({ caller }) func endGame(gameId : Text) : async Result.Result<(), Text> {
@@ -557,22 +618,6 @@ persistent actor GameLogic {
   };
 
   /* ----- Tabla Commands ----- */
-
-  public shared ({ caller }) func updateRentalFee(dto : Commands.UpdateTablaRentalFee) : async Result.Result<(), Text> {
-    let ?tabla = Map.get<Ids.TablaId, T.Tabla>(tablas, Nat32.compare, dto.tablaId) else return #err("Tabla not found");
-    if (caller != tabla.owner) return #err("Only the owner can update rental fee");
-    if (tabla.status != #available) return #err("Cannot update fee while tabla is rented");
-    Map.add<Ids.TablaId, T.Tabla>(
-      tablas,
-      Nat32.compare,
-      dto.tablaId,
-      {
-        tabla with rentalFee = dto.newFee;
-        updatedAt = Time.now();
-      },
-    );
-    #ok(());
-  };
   public shared ({ caller }) func deleteTabla(tablaId : Nat32) : async Result.Result<(), Text> {
   if (not isAdmin(caller)) return #err("unauthorized");
   
@@ -604,13 +649,7 @@ persistent actor GameLogic {
       case null { return #err("Owner not found in registry. Run refreshRegistry() first.") };
     };
     
-    let rentalFee = switch (dto.rarity) {
-      case (#common) { 10_000_000 }; // 0.1 ICP
-      case (#uncommon) { 20_000_000 }; // 0.2 ICP
-      case (#rare) { 50_000_000 }; // 0.5 ICP
-      case (#epic) { 100_000_000 }; // 1 ICP
-      case (#legendary) { 200_000_000 }; // 2 ICP
-    };
+    let rentalFee : Nat = 0;
     
     let metadata : T.TablaMetadata = {
       name = "Tabla #" # Nat.toText(Nat32.toNat(dto.tablaId));
@@ -683,7 +722,7 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
   public query func getAvailableTablas() : async Result.Result<[T.TablaInfo], Text> {
     let out = List.empty<T.TablaInfo>();
     for (tabla in Map.values(tablas)) {
-      if (tabla.status == #available) {
+      if (tabla.status != #burned) {
         List.add<T.TablaInfo>(
           out,
           {
@@ -691,7 +730,7 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
             owner = tabla.owner;
             renter = tabla.renter;
             gameId = tabla.gameId;
-            rentalFee = tabla.rentalFee;
+            rentalFee = 0;
             tokenType = tabla.tokenType;
             rarity = tabla.rarity;
             name = tabla.metadata.name;
@@ -715,13 +754,13 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
         owner = tabla.owner;
         renter = tabla.renter;
         gameId = tabla.gameId;
-        rentalFee = tabla.rentalFee;
+        rentalFee = 0;
         tokenType = tabla.tokenType;
         rarity = tabla.rarity;
         name = tabla.metadata.name;
         image = tabla.metadata.image;
         status = tabla.status;
-        isAvailable = (tabla.status == #available);
+        isAvailable = (tabla.status != #burned);
       }
     );
   };
@@ -733,4 +772,33 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
   public query func tablaCount() : async Nat {
     Map.size(tablas);
   };
+  public composite query func getPot(gameId : Text) : async Result.Result<{ amountBaseUnits : Nat; symbol : Text; decimals : Nat8 }, Text> {
+  let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
+    else return #err("Game not found");
+
+  let l = Escrow.ledgerOf(game.tokenType);
+  let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+
+  let bal      = await l.icrc1_balance_of(potAcct);
+  let symbol   = await l.icrc1_symbol();
+  let decimals = await l.icrc1_decimals();
+
+  #ok({
+    amountBaseUnits = bal;
+    symbol;
+    decimals;
+    });
+  };
+  public shared ({caller}) func initRegistry(r:[(tabla:Nat32, owner : Text)]) : async Result.Result<(),Text>{
+    if (not isAdmin(caller)) return #err("Not authorized");
+    if (Array.size(r) == 0) return #err("Empty tuple")
+      else {
+        for ((id, owner) in Array.values(r)){
+          if (owner != burnAddress){
+            Map.add<Nat32, Text>(owners, Nat32.compare, id + 1, owner);
+          };
+        };
+      #ok(());
+    }
+  }
 };
