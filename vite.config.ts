@@ -7,46 +7,38 @@ import { fileURLToPath } from "url";
 import type { UserConfig } from "vite";
 import { defineConfig, loadEnv } from "vite";
 
+import localCanisterIds from "./.dfx/local/canister_ids.json" assert { type: "json" };
+
 const file = fileURLToPath(new URL("package.json", import.meta.url));
 const json = readFileSync(file, "utf8");
 const { version } = JSON.parse(json);
 
 const network = process.env.DFX_NETWORK ?? "local";
-const readCanisterIds = ({
-  prefix,
-}: {
-  prefix?: string;
-}): Record<string, string> => {
-  const canisterIdsJsonFile =
+
+const readCanisterIds = ({ prefix }: { prefix?: string } = {}): Record<
+  string,
+  string
+> => {
+  type Details = { ic?: string; local?: string };
+
+  const source: Record<string, Details> =
     network === "ic"
-      ? join(process.cwd(), "canister_ids.json")
-      : join(process.cwd(), ".dfx", "local", "canister_ids.json");
+      ? JSON.parse(
+          readFileSync(join(process.cwd(), "canister_ids.json"), "utf-8"),
+        )
+      : (localCanisterIds as Record<string, Details>);
 
-  try {
-    type Details = {
-      ic?: string;
-      local?: string;
-    };
-
-    const config: Record<string, Details> = JSON.parse(
-      readFileSync(canisterIdsJsonFile, "utf-8"),
-    );
-
-    return Object.entries(config).reduce((acc, current: [string, Details]) => {
-      const [canisterName, canisterDetails] = current;
-
-      // Replace hyphens with underscores for valid JavaScript identifiers
-      const sanitizedName = canisterName.replace(/-/g, "_");
-
+  return Object.entries(source).reduce(
+    (acc, [canisterName, canisterDetails]) => {
+      const sanitizedName = canisterName.replace(/-/g, "_"); // hyphens → underscores
       return {
         ...acc,
         [`${prefix ?? ""}${sanitizedName.toUpperCase()}_CANISTER_ID`]:
           canisterDetails[network as keyof Details],
       };
-    }, {});
-  } catch (e) {
-    throw Error(`Could not get canister ID from ${canisterIdsJsonFile}: ${e}`);
-  }
+    },
+    {},
+  );
 };
 
 const config: UserConfig = {
@@ -59,64 +51,45 @@ const config: UserConfig = {
     },
   },
   css: {},
-  ssr: {
-    noExternal: ["svelte-motion", "lucide-svelte"],
-  },
+  ssr: { noExternal: ["svelte-motion", "lucide-svelte"] },
   build: {
     target: "es2020",
-    commonjsOptions: {
-      transformMixedEsModules: true,
-    },
+    commonjsOptions: { transformMixedEsModules: true },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
           const folder = dirname(id);
-
           const lazy = ["@dfinity/nns"];
-
           if (
             ["@sveltejs", "svelte", ...lazy].find((lib) =>
               folder.includes(lib),
             ) === undefined &&
             folder.includes("node_modules")
-          ) {
+          )
             return "vendor";
-          }
-
           if (
             lazy.find((lib) => folder.includes(lib)) !== undefined &&
             folder.includes("node_modules")
-          ) {
+          )
             return "lazy";
-          }
-
           return "index";
         },
-        // Sanitize file names to replace hyphens with underscores
         sanitizeFileName(name) {
           return name.replace(/-/g, "_");
         },
       },
-      plugins: [
-        inject({
-          modules: { Buffer: ["buffer", "Buffer"] },
-        }),
-      ],
+      plugins: [inject({ modules: { Buffer: ["buffer", "Buffer"] } })],
     },
   },
   server: {
-    proxy: {
-      "/api": "http://localhost:4943",
-    },
+    proxy: { "/api": "http://localhost:4943" },
     watch: {
-      ignored: ["**/.dfx/**", "**/.github/**"],
+      ignored: ["**/.github/**"],
     },
   },
   optimizeDeps: {
     esbuildOptions: {
-      define: {
-        global: "globalThis",
-      },
+      define: { global: "globalThis" },
       plugins: [
         NodeModulesPolyfillPlugin(),
         {
@@ -131,40 +104,54 @@ const config: UserConfig = {
       ],
     },
   },
-  worker: {
-    format: "es",
-  },
+  worker: { format: "es" },
 };
 
 export default defineConfig((): UserConfig => {
+  const env = loadEnv(
+    network === "ic"
+      ? "production"
+      : network === "staging"
+        ? "staging"
+        : "development",
+    process.cwd(),
+  );
+
+  const CANISTER_ENV = readCanisterIds({});
+  const CANISTER_ENV_VITE = readCanisterIds({ prefix: "VITE_" });
+
   process.env = {
     ...process.env,
-    ...loadEnv(
-      network === "ic"
-        ? "production"
-        : network === "staging"
-          ? "staging"
-          : "development",
-      process.cwd(),
-    ),
-    ...readCanisterIds({ prefix: "VITE_" }),
+    ...env,
+    ...CANISTER_ENV_VITE,
+    ...CANISTER_ENV,
   };
 
   return {
     ...config,
     define: {
       "process.env": {
-        ...readCanisterIds({}),
+        ...CANISTER_ENV,
         DFX_NETWORK: network,
-        CANISTER_ID_FRONTEND:
-          network === "ic" ? "" : "u6s2n-gx777-77774-qaaba-cai",
-        CANISTER_ID_BACKEND:
-          network === "ic" ? "" : "uxrrr-q7777-77774-qaaaq-cai",
-        CANISTER_ID_INTERNET_IDENTITY: "rdmx6-jaaaa-aaaaa-aaadq-cai",
       },
-      "import.meta.env.VITE_BACKEND_CANISTER_ID": JSON.stringify(
-        network === "ic" ? "" : "uxrrr-q7777-77774-qaaaq-cai",
+
+      "import.meta.env.BACKEND_CANISTER_ID": JSON.stringify(
+        CANISTER_ENV.BACKEND_CANISTER_ID,
       ),
+      "import.meta.env.FRONTEND_CANISTER_ID": JSON.stringify(
+        CANISTER_ENV.FRONTEND_CANISTER_ID,
+      ),
+      "import.meta.env.__CANDID_UI_CANISTER_ID": JSON.stringify(
+        CANISTER_ENV.__CANDID_UI_CANISTER_ID,
+      ),
+
+      "import.meta.env.VITE_BACKEND_CANISTER_ID": JSON.stringify(
+        CANISTER_ENV_VITE.VITE_BACKEND_CANISTER_ID,
+      ),
+      "import.meta.env.VITE_FRONTEND_CANISTER_ID": JSON.stringify(
+        CANISTER_ENV_VITE.VITE_FRONTEND_CANISTER_ID,
+      ),
+
       VITE_APP_VERSION: JSON.stringify(version),
       VITE_DFX_NETWORK: JSON.stringify(network),
     },

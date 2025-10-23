@@ -15,7 +15,7 @@
     "lint": "prettier --plugin-search-dir . --check . && eslint .",
     "format": "prettier --plugin-search-dir . --write .",
     "prebuild": "npm run generate",
-    "prune:tablas:dry": "DRY_RUN=1 tsx src/frontend/src/lib/data/prune-tablas.ts",
+    "prune:tablas:dry": "DRY_RUN=1 tsx src/frontend/src/lib/data/scripts/prune-tablas.ts",
     "prune:tablas": "tsx src/frontend/src/lib/data/scripts/prune-tablas.ts",
     "prune:layouts:dry": "DRY_RUN=1 tsx src/frontend/src/lib/data/scripts/prune-layouts.ts",
     "prune:layouts": "tsx src/frontend/src/lib/data/scripts/prune-layouts.ts",
