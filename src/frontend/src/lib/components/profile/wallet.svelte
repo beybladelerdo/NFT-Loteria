@@ -34,120 +34,120 @@
 </script>
 
 <div
-  class="bg-gradient-to-b from-[#29ABE2] to-[#1e88c7] p-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)]"
+  class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 md:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
 >
-  <div
-    class="bg-[#29ABE2] p-2 border-b-2 border-black flex items-center justify-between"
-  >
-    <div class="flex items-center gap-2">
-      <div class="w-3 h-3 bg-red-500 rounded-full border border-black"></div>
-      <div class="w-3 h-3 bg-[#FBB03B] rounded-full border border-black"></div>
-      <div class="w-3 h-3 bg-green-500 rounded-full border border-black"></div>
-    </div>
-    <div class="text-black font-bold text-sm uppercase tracking-wider">
-      WALLET.EXE
-    </div>
+  <div class="flex items-center justify-between mb-6">
+    <span
+      class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+    >
+      Wallet
+    </span>
     <button
       onclick={handleRefresh}
       disabled={$tokenStore.isLoading || isRefreshing}
-      class="bg-[#FBB03B] text-black px-2 py-1 font-black uppercase border-2 border-black hover:bg-[#e09a2f] transition-all text-xs disabled:opacity-50"
-      style="box-shadow: 2px 2px 0px #000;"
+      class="bg-[#C9B5E8] text-[#1a0033] px-3 py-2 font-black uppercase border-2 border-black hover:bg-[#d9c9f0] hover:scale-105 transition-all text-xs disabled:opacity-50 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
     >
-      {isRefreshing ? "..." : "⟳"}
+      {isRefreshing ? "..." : "⟳ REFRESH"}
     </button>
   </div>
 
-  <div class="bg-white p-6 border-4 border-black">
-    <h2
-      class="text-2xl md:text-3xl font-black text-black uppercase mb-6 text-center"
-      style="text-shadow: 3px 3px 0px #29ABE2;"
+  <h2
+    class="text-2xl md:text-3xl font-black uppercase mb-6 text-[#F4E04D]"
+    style="text-shadow: 3px 3px 0px #000, -1px -1px 0px #000;"
+  >
+    YOUR BALANCES
+  </h2>
+
+  {#if $tokenStore.isLoading && $tokenStore.balances.length === 0}
+    <div
+      class="text-center py-12 bg-[#1a0033] border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
     >
-      YOUR WALLET
-    </h2>
-
-    {#if $tokenStore.isLoading && $tokenStore.balances.length === 0}
-      <div class="text-center py-12">
+      <div
+        class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#C9B5E8] border-t-[#F4E04D]"
+      ></div>
+      <p class="mt-4 font-bold text-white uppercase">LOADING BALANCES...</p>
+    </div>
+  {:else if $tokenStore.error}
+    <div
+      class="bg-[#FF6EC7] border-4 border-black p-6 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+    >
+      <p class="font-bold text-[#1a0033] uppercase text-lg">
+        {$tokenStore.error}
+      </p>
+      <button
+        onclick={handleRefresh}
+        class="mt-4 bg-white text-[#1a0033] px-6 py-3 font-black uppercase border-2 border-black hover:scale-105 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+      >
+        RETRY
+      </button>
+    </div>
+  {:else}
+    <div class="space-y-4">
+      {#each $tokenStore.balances as token}
         <div
-          class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-black border-t-[#29ABE2]"
-        ></div>
-        <p class="mt-4 font-bold text-black">LOADING BALANCES...</p>
-      </div>
-    {:else if $tokenStore.error}
-      <div class="bg-red-500 border-4 border-black p-4 text-center">
-        <p class="font-bold text-white uppercase">{$tokenStore.error}</p>
-        <button
-          onclick={handleRefresh}
-          class="mt-4 bg-white text-black px-4 py-2 font-black uppercase border-2 border-black"
-          style="box-shadow: 2px 2px 0px #000;"
+          class="bg-[#1a0033] border-4 border-black p-4 hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
         >
-          RETRY
-        </button>
-      </div>
-    {:else}
-      <div class="space-y-4">
-        {#each $tokenStore.balances as token}
-          <div
-            class="bg-white border-4 border-black p-4"
-            style="box-shadow: 4px 4px 0px #000;"
-          >
-            <div class="flex items-center gap-4">
-              <!-- Token Icon -->
-              <div
-                class="w-16 h-16 bg-white border-2 border-black flex items-center justify-center flex-shrink-0"
-              >
-                <img
-                  src={token.icon}
-                  alt={token.symbol}
-                  class="w-12 h-12 object-contain"
-                />
-              </div>
+          <div class="flex items-center gap-4">
+            <!-- Token Icon -->
+            <div
+              class="w-16 h-16 bg-white border-2 border-black flex items-center justify-center flex-shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            >
+              <img
+                src={token.icon}
+                alt={token.symbol}
+                class="w-12 h-12 object-contain"
+              />
+            </div>
 
-              <!-- Token Info -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-baseline gap-2">
-                  <h3 class="text-xl font-black text-black uppercase">
-                    {token.name}
-                  </h3>
-                </div>
-                <div class="mt-1">
-                  <p class="text-2xl font-black text-black">
-                    {tokenService.formatBalance(token.balance, token.decimals)}
-                  </p>
-                  <p class="text-xs font-bold text-black uppercase">
-                    {token.symbol}
-                  </p>
-                </div>
+            <!-- Token Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline gap-2">
+                <h3
+                  class="text-xl font-black text-[#F4E04D] uppercase"
+                  style="text-shadow: 2px 2px 0px #000;"
+                >
+                  {token.name}
+                </h3>
               </div>
-
-              <!-- Action Buttons -->
-              <div class="flex flex-col gap-2">
-                <button
-                  onclick={() => openQRCode(token.symbol)}
-                  class="bg-[#522785] text-white px-3 py-2 font-black uppercase border-2 border-black hover:bg-[#6d3399] transition-all text-xs whitespace-nowrap"
-                  style="box-shadow: 2px 2px 0px #000;"
+              <div class="mt-1">
+                <p
+                  class="text-2xl font-black text-white"
+                  style="text-shadow: 2px 2px 0px #000;"
                 >
-                  QR CODE
-                </button>
-                <button
-                  onclick={() => openSend(token.symbol)}
-                  class="bg-[#FBB03B] text-black px-3 py-2 font-black uppercase border-2 border-black hover:bg-[#e09a2f] transition-all text-xs whitespace-nowrap"
-                  style="box-shadow: 2px 2px 0px #000;"
-                >
-                  SEND
-                </button>
+                  {tokenService.formatBalance(token.balance, token.decimals)}
+                </p>
+                <p class="text-xs font-bold text-[#C9B5E8] uppercase">
+                  {token.symbol}
+                </p>
               </div>
             </div>
-          </div>
-        {/each}
-      </div>
 
-      {#if $tokenStore.lastUpdated}
-        <p class="text-xs text-center mt-4 font-bold text-black">
-          LAST UPDATED: {new Date($tokenStore.lastUpdated).toLocaleTimeString()}
-        </p>
-      {/if}
+            <!-- Action Buttons -->
+            <div class="flex flex-col gap-2">
+              <button
+                onclick={() => openQRCode(token.symbol)}
+                class="bg-[#C9B5E8] text-[#1a0033] px-3 py-2 font-black uppercase border-2 border-black hover:bg-[#d9c9f0] hover:scale-105 transition-all text-xs whitespace-nowrap shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                QR CODE
+              </button>
+              <button
+                onclick={() => openSend(token.symbol)}
+                class="bg-[#F4E04D] text-[#1a0033] px-3 py-2 font-black uppercase border-2 border-black hover:bg-[#fff27d] hover:scale-105 transition-all text-xs whitespace-nowrap shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                SEND
+              </button>
+            </div>
+          </div>
+        </div>
+      {/each}
+    </div>
+
+    {#if $tokenStore.lastUpdated}
+      <p class="text-xs text-center mt-6 font-bold text-[#C9B5E8]">
+        LAST UPDATED: {new Date($tokenStore.lastUpdated).toLocaleTimeString()}
+      </p>
     {/if}
-  </div>
+  {/if}
 </div>
 
 {#if showQRModal && selectedToken}

@@ -205,23 +205,13 @@
   onclick={handleBackdropClick}
 >
   <div
-    class="w-full max-w-md bg-gradient-to-b from-[#FBB03B] to-[#e09a2f] p-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.5)]"
+    class="w-full max-w-md bg-gradient-to-b from-[#522785] to-[#521922] p-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.5)]"
   >
     <div
-      class="bg-[#FBB03B] p-2 border-b-2 border-black flex items-center justify-between"
+      class="bg-[#522785] p-2 border-b-2 border-black flex items-center justify-between"
     >
-      <div class="flex items-center gap-2">
-        <div class="w-3 h-3 bg-red-500 rounded-full border border-black"></div>
-        <div
-          class="w-3 h-3 bg-[#29ABE2] rounded-full border border-black"
-        ></div>
-        <div
-          class="w-3 h-3 bg-green-500 rounded-full border border-black"
-        ></div>
-      </div>
-      <div class="text-black font-bold text-xs uppercase">
-        SEND_{token?.symbol}.EXE
-      </div>
+      <div class="flex items-center gap-2"></div>
+
       <button
         onclick={onClose}
         class="w-4 h-4 bg-red-500 border border-black hover:bg-red-600 flex items-center justify-center"
@@ -294,12 +284,12 @@
             </div>
 
             <!-- Transaction Fee -->
-            <div class="bg-black border-2 border-[#29ABE2] p-3">
+            <div class="bg-black border-2 border-[#522785] p-3">
               <div class="flex justify-between items-center">
-                <span class="text-xs font-bold text-[#29ABE2] uppercase"
+                <span class="text-xs font-bold text-[#522785] uppercase"
                   >Transaction Fee</span
                 >
-                <span class="text-sm font-black text-[#29ABE2]">
+                <span class="text-sm font-black text-[#522785]">
                   {tokenService.formatBalance(txFee, token.decimals)}
                   {token.symbol}
                 </span>

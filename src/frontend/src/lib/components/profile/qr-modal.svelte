@@ -121,8 +121,8 @@
         <label class="block text-xs font-black text-black uppercase mb-2">
           Your Account ID
         </label>
-        <div class="bg-black border-2 border-[#29ABE2] p-3">
-          <code class="text-xs text-[#29ABE2] break-all font-bold">
+        <div class="bg-black border-2 border-[#C9B5E8] p-3">
+          <code class="text-xs text-[#C9B5E8] break-all font-bold">
             {accountId || "Loading..."}
           </code>
         </div>
@@ -131,7 +131,7 @@
       <div class="flex gap-2">
         <button
           onclick={copyToClipboard}
-          class="flex-1 bg-[#29ABE2] text-black px-4 py-3 font-black uppercase border-2 border-black hover:bg-[#1e88c7] transition-all"
+          class="flex-1 bg-[#C9B5E8] text-black px-4 py-3 font-black uppercase border-2 border-black hover:bg-[#1e88c7] transition-all"
           style="box-shadow: 2px 2px 0px #000;"
         >
           {copied ? "✓ COPIED!" : "COPY ADDRESS"}

@@ -12,17 +12,16 @@ import type {
   GetActiveGames,
   GetGame,
   JoinGame,
-  UpdateTablaRentalFee,
   Result,
   Result_1,
   Result_2,
-  Result_4,
   Result_5,
   Result_6,
   Result_7,
   Result_8,
   Result_9,
   Result_10,
+  Result_11,
 } from "../../../../declarations/backend/backend.did";
 
 const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
@@ -35,14 +34,21 @@ function toMode(mode: "Line" | "Blackout"): GameMode {
   return mode === "Line" ? { line: null } : { blackout: null };
 }
 
-function toToken(tt: "ICP" | "ckBTC"): TokenType {
-  return tt === "ICP" ? { ICP: null } : { ckBTC: null };
+function toToken(tt: "ICP" | "ckBTC" | "GLDT"): TokenType {
+  switch (tt) {
+    case "ICP":
+      return { ICP: null };
+    case "ckBTC":
+      return { ckBTC: null };
+    case "GLDT":
+      return { gldt: null };
+  }
 }
 
 export interface CreateGameParams {
   name: string;
   mode: "Line" | "Blackout";
-  tokenType: "ICP" | "ckBTC";
+  tokenType: "ICP" | "ckBTC" | "GLDT";
   entryFee: number;
   hostFeePercent: number;
 }
@@ -86,7 +92,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetOpenGames = { page: BigInt(page) };
-      const res: Result_4 = await actor.getOpenGames(dto);
+      const res: Result_5 = await actor.getOpenGames(dto);
       if ("err" in res) return [];
       return res.ok.openGames;
     } catch (e) {
@@ -99,7 +105,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetActiveGames = { page: BigInt(page) };
-      const res: Result_8 = await actor.getActiveGames(dto);
+      const res: Result_9 = await actor.getActiveGames(dto);
       if ("err" in res) return [];
       return res.ok.activeGames;
     } catch (e) {
@@ -112,7 +118,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_5 = await actor.getGame(dto);
+      const res: Result_6 = await actor.getGame(dto);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
@@ -146,7 +152,7 @@ export class GameService {
         };
       }
       const actor = await this.getActor();
-      const res: Result_10 = await actor.createGame({
+      const res: Result_11 = await actor.createGame({
         name: params.name,
         mode: toMode(params.mode),
         tokenType: toToken(params.tokenType),
@@ -208,7 +214,7 @@ export class GameService {
   ): Promise<{ success: boolean; cardId?: number; error?: string }> {
     try {
       const actor = await this.getActor();
-      const res: Result_9 = await actor.drawCard(gameId);
+      const res: Result_10 = await actor.drawCard(gameId);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true, cardId: Number(res.ok) };
     } catch (e: any) {
@@ -220,7 +226,7 @@ export class GameService {
   async getDrawHistory(gameId: string): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_6 = await actor.getDrawHistory({ gameId });
+      const res: Result_7 = await actor.getDrawHistory({ gameId });
       if ("err" in res) return [];
       return Array.from(res.ok as ArrayLike<number>, Number);
     } catch (e) {
@@ -228,7 +234,6 @@ export class GameService {
       return [];
     }
   }
-  
 
   async claimWin(
     gameId: string,
@@ -250,7 +255,7 @@ export class GameService {
   async getAvailableTablas(): Promise<TablaInfo[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_7 = await actor.getAvailableTablas();
+      const res: Result_8 = await actor.getAvailableTablas();
       if ("err" in res) return [];
       return res.ok;
     } catch (e) {
@@ -280,28 +285,6 @@ export class GameService {
     } catch (e) {
       console.error("getTablaCards failed:", e);
       return [];
-    }
-  }
-
-  async updateRentalFee(
-    tablaId: number,
-    newFee: number,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      if (!Number.isInteger(newFee) || newFee < 0) {
-        return {
-          success: false,
-          error: "newFee must be a non-negative integer",
-        };
-      }
-      const actor = await this.getActor();
-      const dto: UpdateTablaRentalFee = { tablaId, newFee: BigInt(newFee) };
-      const res: Result = await actor.updateRentalFee(dto);
-      if ("err" in res) return { success: false, error: res.err };
-      return { success: true };
-    } catch (e: any) {
-      console.error("updateRentalFee failed:", e);
-      return { success: false, error: e?.message ?? String(e) };
     }
   }
 
@@ -392,6 +375,19 @@ export class GameService {
       return { success: true };
     } catch (e: any) {
       console.error("deleteTabla failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async initRegistry(
+    pairs: Array<[number, string]>,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.initRegistry(pairs);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("init registry failed, Tabla failed:", e);
       return { success: false, error: e?.message ?? String(e) };
     }
   }

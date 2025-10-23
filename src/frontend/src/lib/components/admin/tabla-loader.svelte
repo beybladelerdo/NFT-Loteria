@@ -10,6 +10,7 @@
   let result = $state<{
     success: boolean;
     created?: number[];
+    skipped?: number[];
     error?: string;
   } | null>(null);
   let totalTablas = $state(0);
@@ -117,6 +118,7 @@
 
       isLoading = true;
       const allCreated: number[] = [];
+      const allSkipped: number[] = [];
 
       // Process each chunk sequentially
       for (let i = 0; i < chunks.length; i++) {
@@ -125,13 +127,37 @@
 
         const chunkResult = await gameStore.batchLoadTablas(chunks[i]);
 
-        if (!chunkResult.success) {
-          result = {
-            success: false,
-            error: `Failed at chunk ${currentChunk}: ${chunkResult.error}`,
-          };
-          isLoading = false;
-          return;
+        // Check if the error is only about duplicates
+        if (!chunkResult.success && chunkResult.error) {
+          const errorMsg = chunkResult.error.toLowerCase();
+          const isDuplicateOnlyError = errorMsg.includes("already exists");
+
+          if (isDuplicateOnlyError) {
+            // Extract tabla IDs from duplicate errors
+            const duplicateMatches = chunkResult.error.match(/tabla (\d+):/gi);
+            if (duplicateMatches) {
+              const skippedIds: number[] = duplicateMatches
+                .map((match: string) => {
+                  const num = match.match(/\d+/);
+                  return num ? parseInt(num[0]) : 0;
+                })
+                .filter((id: number) => id > 0);
+              allSkipped.push(...skippedIds);
+            }
+
+            // Continue processing if it's only duplicates
+            console.log(
+              `Chunk ${currentChunk}: Skipped ${allSkipped.length} duplicates`,
+            );
+          } else {
+            // If there's a real error (not just duplicates), stop
+            result = {
+              success: false,
+              error: `Failed at chunk ${currentChunk}: ${chunkResult.error}`,
+            };
+            isLoading = false;
+            return;
+          }
         }
 
         if (chunkResult.created) {
@@ -147,6 +173,7 @@
       result = {
         success: true,
         created: allCreated,
+        skipped: allSkipped,
       };
       loadingProgress = "";
     } catch (error: any) {
@@ -205,7 +232,8 @@
           2. METADATA FILE: {(tablaMetadata as TablaJSON[]).length} TABLAS READY
         </li>
         <li>3. CHUNKED UPLOAD: {CHUNK_SIZE} TABLAS PER BATCH</li>
-        <li>4. WAIT FOR COMPLETION (MAY TAKE SEVERAL MINUTES)</li>
+        <li>4. DUPLICATES WILL BE AUTOMATICALLY SKIPPED</li>
+        <li>5. WAIT FOR COMPLETION (MAY TAKE SEVERAL MINUTES)</li>
       </ul>
     </div>
 
@@ -280,13 +308,18 @@
           ? 'green'
           : 'red'}-500 border-4 border-black p-4"
       >
-        <p class="text-white font-bold uppercase text-center">
+        <p class="text-white font-bold uppercase text-center mb-2">
           {#if result.success}
-            ✓ SUCCESS: {result.created?.length ?? 0} TABLAS LOADED
+            ✓ SUCCESS: {result.created?.length ?? 0} TABLAS CREATED
           {:else}
             ✗ ERROR: {result.error}
           {/if}
         </p>
+        {#if result.success && result.skipped && result.skipped.length > 0}
+          <p class="text-white font-bold text-center text-sm">
+            ⊘ {result.skipped.length} DUPLICATES SKIPPED
+          </p>
+        {/if}
       </div>
     {/if}
 

@@ -3,6 +3,7 @@
   import { adjectives, nouns } from "$lib/constants/app.constants";
   import { isUsernameValid } from "$lib/utils/helpers";
   import { userStore } from "$lib/stores/user-store";
+  import FlickeringGrid from "$lib/components/landing/FlickeringGrid.svelte";
   import Spinner from "../shared/global/spinner.svelte";
   import { goto } from "$app/navigation";
 
@@ -101,146 +102,116 @@
 </script>
 
 {#if isLoading}
-  <div class="flex items-center justify-center min-h-screen bg-[#ED1E79]">
+  <div class="flex items-center justify-center min-h-screen bg-[#1a0033]">
     <Spinner />
   </div>
 {:else}
   <div
-    class="flex flex-col items-center justify-center min-h-screen px-4 bg-[#ED1E79] relative overflow-hidden"
+    class="flex flex-col items-center justify-center min-h-screen px-4 bg-[#1a0033] relative overflow-hidden"
   >
-    <!-- Retro Grid Background -->
-    <div
-      class="absolute inset-0 opacity-20"
-      style="background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, #29ABE2 2px, #29ABE2 4px), repeating-linear-gradient(90deg, transparent, transparent 2px, #29ABE2 2px, #29ABE2 4px); background-size: 40px 40px;"
-    ></div>
-
-    <!-- Floating Decorative Elements -->
-    <div
-      class="absolute top-20 left-10 w-12 h-12 bg-[#FBB03B] rotate-45 opacity-50"
-    ></div>
-    <div
-      class="absolute top-40 right-20 w-8 h-8 bg-[#29ABE2] rounded-full opacity-60"
-    ></div>
-    <div
-      class="absolute bottom-32 left-1/4 w-10 h-10 border-4 border-[#522785] rotate-12 opacity-40"
-    ></div>
+    <!-- Flickering Grid Background -->
+    <div class="absolute inset-0">
+      <FlickeringGrid
+        class="z-0 absolute inset-0 size-full"
+        squareSize={4}
+        gridGap={6}
+        color="#C9B5E8"
+        maxOpacity={0.3}
+        flickerChance={0.1}
+      />
+    </div>
 
     <div class="w-full max-w-2xl relative z-10">
-      <!-- Main Window -->
+      <!-- Main Card -->
       <div
-        class="bg-gradient-to-b from-[#29ABE2] to-[#1e88c7] p-1 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)]"
+        class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-8 md:p-12 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
       >
-        <div
-          class="bg-[#29ABE2] p-2 border-b-2 border-black flex items-center justify-between"
-        >
-          <div class="flex items-center gap-2">
-            <div
-              class="w-3 h-3 bg-red-500 rounded-full border border-black"
-            ></div>
-            <div
-              class="w-3 h-3 bg-[#FBB03B] rounded-full border border-black"
-            ></div>
-            <div
-              class="w-3 h-3 bg-green-500 rounded-full border border-black"
-            ></div>
-          </div>
-          <div class="text-black font-bold text-sm uppercase tracking-wider">
-            CHOOSE_USERNAME.EXE
-          </div>
-          <div class="w-12"></div>
+        <!-- Header -->
+        <div class="text-center mb-8">
+          <h1
+            class="text-4xl md:text-5xl font-black uppercase mb-4"
+            style="text-shadow: 4px 4px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;"
+          >
+            <span class="text-[#F4E04D]">CHOOSE YOUR TAG</span>
+          </h1>
+          <p class="text-base md:text-lg font-bold text-white max-w-xl mx-auto">
+            We've generated a unique username for you. Keep it or change it—your
+            choice.
+          </p>
         </div>
 
-        <div class="bg-white p-8 md:p-12 border-4 border-black">
-          <!-- Header -->
-          <div class="text-center mb-8">
-            <h1
-              class="text-4xl md:text-5xl font-black text-black uppercase mb-4"
-              style="text-shadow: 3px 3px 0px #29ABE2;"
-            >
-              CHOOSE YOUR TAG
-            </h1>
+        <!-- Username Display -->
+        <div class="mb-8">
+          <div
+            class="bg-[#1a0033] border-4 border-[#F4E04D] p-6 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+          >
             <p
-              class="text-base md:text-lg font-bold text-black max-w-xl mx-auto"
+              class="text-3xl md:text-4xl font-black text-[#F4E04D]"
+              style="text-shadow: 3px 3px 0px #000;"
             >
-              We've generated a unique username for you. Keep it or change
-              it—your choice.
+              @{username}
             </p>
           </div>
+        </div>
 
-          <!-- Username Display -->
-          <div class="mb-8">
-            <div
-              class="bg-black border-4 border-[#29ABE2] p-6 text-center"
-              style="box-shadow: 6px 6px 0px #FBB03B;"
+        <!-- Edit Section -->
+        <div
+          class="bg-[#1a0033] border-4 border-black p-6 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+        >
+          <div class="space-y-4">
+            <label
+              for="username"
+              class="block text-sm font-black text-[#C9B5E8] uppercase tracking-wider"
             >
-              <p class="text-3xl md:text-4xl font-black text-[#29ABE2]">
-                @{username}
-              </p>
-            </div>
-          </div>
+              EDIT USERNAME
+            </label>
+            <input
+              id="username"
+              type="text"
+              bind:value={username}
+              oninput={handleUsernameInput}
+              class="w-full px-4 py-3 text-lg bg-white border-4 border-black text-[#1a0033] placeholder-gray-500 focus:outline-none focus:border-[#F4E04D] font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+              placeholder="YOUR-USERNAME"
+            />
 
-          <!-- Edit Section -->
-          <div
-            class="bg-[#FBB03B] border-4 border-black p-6 mb-6"
-            style="box-shadow: 4px 4px 0px #000;"
+            {#if isEditing && username.length > 0}
+              <div
+                class="text-sm font-bold bg-[#1a0033] border-2 border-[#C9B5E8] p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >
+                {#if isCheckingUsername}
+                  <p class="text-[#C9B5E8]">CHECKING AVAILABILITY...</p>
+                {:else if usernameError}
+                  <p class="text-[#FF6EC7]">{usernameError}</p>
+                {:else if usernameAvailable}
+                  <p class="text-[#F4E04D]">✓ USERNAME AVAILABLE</p>
+                {/if}
+              </div>
+            {/if}
+
+            <p
+              class="text-xs font-bold text-white bg-[#522785] p-3 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+            >
+              5-20 CHARACTERS. YOU CAN CHANGE IT LATER.
+            </p>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+          <button
+            onclick={generateUsername}
+            class="px-6 py-3 bg-[#C9B5E8] text-[#1a0033] font-black uppercase border-4 border-black hover:bg-[#d9c9f0] hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           >
-            <div class="space-y-4">
-              <label
-                for="username"
-                class="block text-sm font-black text-black uppercase tracking-wider"
-              >
-                EDIT USERNAME
-              </label>
-              <input
-                id="username"
-                type="text"
-                bind:value={username}
-                oninput={handleUsernameInput}
-                class="w-full px-4 py-3 text-lg bg-white border-4 border-black text-black placeholder-gray-500 focus:outline-none focus:border-[#522785] font-black uppercase"
-                placeholder="YOUR-USERNAME"
-              />
+            GENERATE NEW
+          </button>
 
-              {#if isEditing && username.length > 0}
-                <div
-                  class="text-sm font-bold bg-white border-2 border-black p-2"
-                >
-                  {#if isCheckingUsername}
-                    <p class="text-black">CHECKING AVAILABILITY...</p>
-                  {:else if usernameError}
-                    <p class="text-red-600">{usernameError}</p>
-                  {:else if usernameAvailable}
-                    <p class="text-green-600">✓ USERNAME AVAILABLE</p>
-                  {/if}
-                </div>
-              {/if}
-
-              <p
-                class="text-xs font-bold text-black bg-black/10 p-2 border-2 border-black"
-              >
-                5-20 CHARACTERS. YOU CAN CHANGE IT LATER.
-              </p>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onclick={generateUsername}
-              class="px-6 py-3 bg-[#29ABE2] text-black font-black uppercase border-4 border-black hover:bg-[#1e88c7] transition-all"
-              style="box-shadow: 4px 4px 0px #000;"
-            >
-              GENERATE NEW
-            </button>
-
-            <button
-              onclick={saveUsername}
-              disabled={isEditing && (!usernameAvailable || isCheckingUsername)}
-              class="px-8 py-3 bg-[#522785] text-white font-black uppercase border-4 border-black hover:bg-[#6d3399] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-              style="box-shadow: 4px 4px 0px #000;"
-            >
-              {isEditing ? "CONTINUE >>" : "SKIP >>"}
-            </button>
-          </div>
+          <button
+            onclick={saveUsername}
+            disabled={isEditing && (!usernameAvailable || isCheckingUsername)}
+            class="px-8 py-3 bg-[#F4E04D] text-[#1a0033] font-black uppercase border-4 border-black hover:bg-[#fff27d] hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          >
+            {isEditing ? "CONTINUE >>" : "SKIP >>"}
+          </button>
         </div>
       </div>
     </div>

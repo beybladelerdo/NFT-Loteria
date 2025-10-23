@@ -36,25 +36,22 @@
 <div
   class="{isMenuOpen
     ? 'translate-x-0'
-    : 'translate-x-full'} lg:hidden fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-[#ED1E79] border-l-4 border-black shadow-2xl transform transition-transform duration-300 ease-in-out"
+    : 'translate-x-full'} lg:hidden fixed inset-y-0 right-0 z-50 w-full sm:w-80 bg-gradient-to-b from-[#522785] to-[#3d1d63] border-l-4 border-black shadow-2xl transform transition-transform duration-300 ease-in-out"
 >
   <!-- Window Title Bar -->
   <div
-    class="bg-[#29ABE2] p-3 border-b-4 border-black flex items-center justify-between"
+    class="bg-[#F4E04D] p-3 border-b-4 border-black flex items-center justify-between"
   >
     <div class="flex items-center gap-2">
-      <div class="w-4 h-4 bg-red-500 border-2 border-black"></div>
-      <div class="w-4 h-4 bg-[#FBB03B] border-2 border-black"></div>
-      <div class="w-4 h-4 bg-green-500 border-2 border-black"></div>
-      <span class="ml-2 text-black font-black text-sm uppercase">MENU.EXE</span>
+      <span class="ml-2 text-[#1a0033] font-black text-sm uppercase">MENU</span>
     </div>
     <button
       onclick={toggleMenu}
-      class="p-1 bg-red-500 border-2 border-black hover:bg-red-600"
+      class="p-1 bg-[#1a0033] border-2 border-black hover:bg-black"
       aria-label="Close menu"
     >
       <svg
-        class="w-4 h-4 stroke-white"
+        class="w-4 h-4 stroke-[#F4E04D]"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"
@@ -70,31 +67,26 @@
   </div>
 
   <!-- User Info Panel -->
-  <div class="p-6 bg-white border-b-4 border-black">
+  <div class="p-6 bg-[#1a0033] border-b-4 border-black">
     <div class="flex items-center gap-3">
       <div
-        class="w-16 h-16 bg-[#522785] border-4 border-black flex items-center justify-center text-white font-black text-2xl"
-        style="box-shadow: 4px 4px 0 #FBB03B;"
+        class="w-16 h-16 bg-gradient-to-br from-[#F4E04D] to-[#C9B5E8] border-4 border-black flex items-center justify-center text-[#1a0033] font-black text-2xl"
+        style="box-shadow: 4px 4px 0 #000;"
       >
         {user.username[0].toUpperCase()}
       </div>
       <div class="flex-1 min-w-0">
         <p
-          class="text-black font-black truncate text-lg"
-          style="text-shadow: 2px 2px 0px #29ABE2;"
+          class="text-[#F4E04D] font-black truncate text-lg"
+          style="text-shadow: 2px 2px 0px #000;"
         >
           @{user.username}
         </p>
         <div class="flex gap-2 mt-1 flex-wrap">
           <span
-            class="text-xs bg-[#FBB03B] border border-black px-2 py-0.5 font-bold text-black"
+            class="text-xs bg-[#F4E04D] border-2 border-black px-2 py-0.5 font-bold text-[#1a0033] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             {user.games} GAMES
-          </span>
-          <span
-            class="text-xs bg-[#29ABE2] border border-black px-2 py-0.5 font-bold text-black"
-          >
-            {user.wins} WINS
           </span>
         </div>
       </div>
@@ -108,7 +100,7 @@
         <li>
           <button
             onclick={() => navigate(item.path)}
-            class="w-full text-left px-4 py-3 bg-white border-2 border-black font-bold text-black text-bold uppercase text-sm hover:bg-[#FBB03B] transition flex items-center justify-between"
+            class="w-full text-left px-4 py-3 bg-white border-2 border-black font-bold text-[#1a0033] uppercase text-sm hover:bg-[#F4E04D] hover:scale-105 transition flex items-center justify-between"
             style="box-shadow: 3px 3px 0 #000;"
           >
             <span>{item.label}</span>
@@ -123,7 +115,7 @@
   <div class="absolute bottom-6 left-4 right-4">
     <button
       onclick={handleSignOut}
-      class="w-full px-4 py-4 bg-red-500 text-white border-4 border-black font-black uppercase hover:bg-red-600 transition"
+      class="w-full px-4 py-4 bg-[#F4E04D] text-[#1a0033] border-4 border-black font-black uppercase hover:bg-[#fff27d] hover:scale-105 transition"
       style="box-shadow: 4px 4px 0 #000;"
     >
       SIGN OUT

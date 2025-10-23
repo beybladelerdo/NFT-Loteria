@@ -3,13 +3,13 @@ import { existingTablas } from "$lib/data/existing-tablas";
 const cardMods = import.meta.glob("$lib/assets/Cards/Character_*.png", {
   eager: true,
 });
-const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.png", {
+const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.jpg", {
   eager: true,
 });
 
 // extract trailing number for sorting
 function idFromPath(p: string): number {
-  const m = p.match(/(?:character|tabla)_(\d+)\.png$/i);
+  const m = p.match(/(?:character|tabla)_(\d+)\.jpg$/i);
   return m ? Number(m[1]) : -1;
 }
 
@@ -38,6 +38,18 @@ const filteredTablaMods = Object.fromEntries(
 
 export const cardImages = toSortedUrls(cardMods);
 export const tablaImages = toSortedUrls(filteredTablaMods);
+
+export const tablaUrlById: Map<number, string> = new Map(
+  Object.entries(filteredTablaMods)
+    .map(([path, mod]) => [
+      idFromPath(path), 
+      (mod as { default: string }).default  // ← FIX: Extract .default
+    ] as [number, string])
+    .filter(([id]) => id > 0),
+);
+
+export const getTablaUrl = (id: number, fallback = "/Tablas/placeholder.jpg") =>
+  tablaUrlById.get(id) ?? fallback;
 
 if (import.meta.env.DEV) {
   console.log("[gallery] cards:", cardImages.length);

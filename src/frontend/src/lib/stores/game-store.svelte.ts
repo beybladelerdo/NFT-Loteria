@@ -160,11 +160,16 @@ export const gameStore = {
 
   // -------- Tablas --------
   async fetchAvailableTablas() {
+    isLoading = true;
     try {
       const tablas = await new GameService().getAvailableTablas();
       availableTablas = tablas;
-    } catch (error) {
+      return { success: true, tablas };
+    } catch (error: any) {
       console.error("Error fetching available tablas:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
     }
   },
 
@@ -245,6 +250,15 @@ export const gameStore = {
       return result;
     } catch (error: any) {
       console.error("Error deleting tabla:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async initRegistry(pairs: Array<[number, string]>) {
+    try {
+      const result = await new GameService().initRegistry(pairs);
+      return result;
+    } catch (error: any) {
+      console.error("Error initializing registry:", error);
       return { success: false, error: error?.message ?? String(error) };
     }
   },

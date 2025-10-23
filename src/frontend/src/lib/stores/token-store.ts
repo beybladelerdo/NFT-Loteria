@@ -1,4 +1,4 @@
-import { writable, derived, get } from "svelte/store";
+import { writable, get } from "svelte/store";
 import { authStore } from "./auth-store";
 import { TokenService, type TokenBalance } from "$lib/services/token-service";
 

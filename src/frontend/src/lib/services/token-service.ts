@@ -19,6 +19,68 @@ export interface TokenBalance {
 }
 
 export class TokenService {
+  async approve(
+    canisterId: string,
+    identity: any,
+    args: {
+      amount: bigint;
+      spender: { owner: Principal; subaccount?: Uint8Array | number[] | null };
+      fromSubaccount?: Uint8Array | number[] | null;
+      fee?: bigint;
+      memo?: Uint8Array | number[];
+      expectedAllowance?: bigint;
+    },
+  ): Promise<bigint> {
+    const agent = await createAgent({
+      identity,
+      host:
+        import.meta.env.VITE_DFX_NETWORK === "ic"
+          ? "https://icp-api.io"
+          : "http://localhost:4943",
+    });
+
+    const ledger = IcrcLedgerCanister.create({
+      agent,
+      canisterId: Principal.fromText(canisterId),
+    });
+
+    const nowNs = BigInt(Date.now()) * 1_000_000n;
+    const expiresAtNs = nowNs + 5n * 60n * 1_000_000_000n;
+
+    const res = await ledger.approve({
+      amount: args.amount,
+      spender: {
+        owner: args.spender.owner,
+        subaccount:
+          args.spender.subaccount != null
+            ? [
+                args.spender.subaccount instanceof Uint8Array
+                  ? args.spender.subaccount
+                  : Uint8Array.from(args.spender.subaccount),
+              ]
+            : [],
+      },
+      from_subaccount:
+        args.fromSubaccount != null
+          ? args.fromSubaccount instanceof Uint8Array
+            ? args.fromSubaccount
+            : Uint8Array.from(args.fromSubaccount)
+          : undefined,
+      fee: args.fee,
+      memo:
+        args.memo != null
+          ? args.memo instanceof Uint8Array
+            ? args.memo
+            : Uint8Array.from(args.memo)
+          : undefined,
+      expected_allowance: args.expectedAllowance,
+      created_at_time: nowNs,
+      expires_at: expiresAtNs,
+    });
+
+    return res;
+  }
+
   async getTokenBalance(
     canisterId: string,
     owner: Principal,

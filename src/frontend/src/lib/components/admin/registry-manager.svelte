@@ -1,8 +1,14 @@
 <script lang="ts">
   import { gameStore } from "$lib/stores/game-store.svelte";
 
+  const dfxNetwork =
+    (
+      import.meta.env?.VITE_DFX_NETWORK as string | undefined
+    )?.toLowerCase?.() ?? "local";
+  const isMainnet = dfxNetwork === "ic";
   let isRefreshing = $state(false);
   let result = $state<{ success: boolean; error?: string } | null>(null);
+  let manualText = $state<string>("");
 
   async function handleRefreshRegistry() {
     isRefreshing = true;
@@ -13,6 +19,72 @@
     } catch (error) {
       console.error("Error refreshing registry:", error);
       result = { success: false, error: String(error) };
+    } finally {
+      isRefreshing = false;
+    }
+  }
+  function isLikelyJson(text: string) {
+    const t = text.trim();
+    return t.startsWith("[") && t.endsWith("]");
+  }
+  function parseJsonTuples(text: string): Array<[number, string]> {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed))
+      throw new Error("JSON must be an array of [id, owner] pairs");
+    return parsed.map((row: unknown) => {
+      if (!Array.isArray(row) || row.length !== 2)
+        throw new Error(`Invalid row: ${JSON.stringify(row)}`);
+      const id = Number(row[0]);
+      const owner = String(row[1]).trim();
+      if (!Number.isInteger(id) || id < 0) throw new Error(`Bad id: ${row[0]}`);
+      if (!owner) throw new Error("Missing owner");
+      return [id, owner] as [number, string];
+    });
+  }
+
+  function parseCsvTuples(text: string): Array<[number, string]> {
+    return text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [idStr, owner] = line.split(",").map((s) => s.trim());
+        const id = Number(idStr);
+        if (!Number.isInteger(id) || id < 0)
+          throw new Error(`Bad id in line: "${line}"`);
+        if (!owner) throw new Error(`Missing owner in line: "${line}"`);
+        return [id, owner] as [number, string];
+      });
+  }
+
+  function parseManual(text: string): Array<[number, string]> {
+    return isLikelyJson(text) ? parseJsonTuples(text) : parseCsvTuples(text);
+  }
+  async function handleInitRegistryManual() {
+    isRefreshing = true;
+    result = null;
+    try {
+      const pairs = parseManual(manualText);
+
+      const pairs1 = pairs.map(([id, owner]) => {
+        if (!Number.isInteger(id) || id < 0) {
+          throw new Error(`Invalid id: ${id}`);
+        }
+        if (id >= 0xffffffff) {
+          throw new Error(
+            `id ${id} too large to bump (+1 would overflow Nat32)`,
+          );
+        }
+        return [id, owner] as [number, string];
+      });
+
+      result = await gameStore.initRegistry(pairs1);
+    } catch (error) {
+      console.error("Error initRegistry:", error);
+      result = {
+        success: false,
+        error: (error as Error)?.message ?? String(error),
+      };
     } finally {
       isRefreshing = false;
     }
@@ -47,35 +119,65 @@
 
     <div class="bg-black border-4 border-[#FBB03B] p-6 mb-6">
       <p class="text-[#FBB03B] font-bold text-sm leading-relaxed">
-        &gt; SYNC NFT OWNERSHIP DATA FROM EXT CANISTER<br />
+        &gt; {isMainnet
+          ? "SYNC NFT OWNERSHIP DATA FROM EXT CANISTER"
+          : "MANUAL REGISTRY INIT (LOCAL/OFFLINE)"}<br />
         &gt; CANISTER ID: psaup-3aaaa-aaaak-qsxlq-cai<br />
-        &gt; THIS MUST BE RUN BEFORE LOADING TABLAS<br />
+        &gt; RUN BEFORE LOADING TABLAS<br />
         &gt; UPDATES OWNER ACCOUNT IDS FOR ALL NFTS
       </p>
     </div>
 
-    <div class="text-center mb-6">
-      <button
-        onclick={handleRefreshRegistry}
-        disabled={isRefreshing}
-        class="bg-[#522785] text-white px-8 py-4 font-black uppercase border-4 border-black hover:bg-[#6d3399] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all text-lg"
-        style="box-shadow: 4px 4px 0px #000;"
-      >
-        {isRefreshing ? "SYNCING..." : "SYNC REGISTRY >>"}
-      </button>
+    <!-- Controls -->
+    <div class="grid gap-6 md:grid-cols-2">
+      {#if isMainnet}
+        <div class="text-center">
+          <button
+            on:click={handleRefreshRegistry}
+            disabled={isRefreshing}
+            class="bg-[#522785] text-white px-8 py-4 font-black uppercase border-4 border-black hover:bg-[#6d3399] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all text-lg"
+            style="box-shadow: 4px 4px 0px #000;"
+          >
+            {isRefreshing ? "SYNCING..." : "SYNC REGISTRY >>"}
+          </button>
+        </div>
+      {/if}
+
+      <!-- Manual admin init (always shown) -->
+      <div class="md:col-start-2">
+        <!-- svelte-ignore a11y_label_has_associated_control -->
+        <label class="block text-xs font-black uppercase mb-2 text-black">
+          Paste JSON <em>[[id, "owner"], ...]</em> or CSV <em>id, owner</em>
+        </label>
+        <!-- svelte-ignore element_invalid_self_closing_tag -->
+        <textarea
+          bind:value={manualText}
+          rows="12"
+          class="w-full border-4 border-black p-3 dark:text-black dark:bg-white font-mono text-xs md:text-sm"
+        />
+        <div class="mt-2 text-right">
+          <!-- svelte-ignore event_directive_deprecated -->
+          <button
+            on:click={handleInitRegistryManual}
+            disabled={isRefreshing}
+            class="bg-[#29ABE2] text-black px-6 py-2 font-black uppercase border-4 border-black hover:brightness-110 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all text-sm"
+            style="box-shadow: 4px 4px 0px #000;"
+          >
+            {isRefreshing ? "APPLYING..." : "APPLY MANUAL >>"}
+          </button>
+        </div>
+      </div>
     </div>
 
     {#if result}
       <div
-        class="bg-{result.success
-          ? 'green'
-          : 'red'}-500 border-4 border-black p-4"
+        class={`mt-6 border-4 border-black p-4 ${result.success ? "bg-green-500" : "bg-red-500"}`}
       >
         <p class="text-white font-bold text-center uppercase">
           {#if result.success}
-            ✓ REGISTRY SYNC SUCCESSFUL
+            ✓ REGISTRY INIT/SYNC SUCCESSFUL
           {:else}
-            ✗ SYNC FAILED: {result.error}
+            ✗ OPERATION FAILED: {result.error}
           {/if}
         </p>
       </div>
