@@ -21,7 +21,7 @@
   let gameName = $state("");
   let gameMode = $state<"Line" | "Blackout">("Line");
   let tokenType = $state<"ICP" | "ckBTC" | "GLDT">("ICP");
-  let entryFee = $state(0);
+  let entryFeeInput = $state("");
   let hostFeePercent = $state(5);
   // Derived balances
   let balances = $derived({
@@ -56,6 +56,26 @@
     gameName: "",
     entryFee: "",
   });
+  function isCkBTC() {
+    return tokenType === "ckBTC";
+  }
+  function parseToE8s(s: string): bigint {
+    const t = s.trim();
+    const m = /^(\d+)(?:\.(\d{1,8})?)?$/.exec(t);
+    if (!m) throw new Error("ckBTC supports up to 8 decimal places");
+    const whole = m[1] ?? "0";
+    const frac = (m[2] ?? "").padEnd(8, "0");
+    return BigInt(whole) * 100000000n + BigInt(frac);
+  }
+  function parseWholeToBigInt(s: string): bigint {
+    const t = s.trim();
+    if (!/^\d+$/.test(t)) throw new Error("Entry fee must be a whole number");
+    return BigInt(t);
+  }
+  function readableEntryFee(): number {
+    if (entryFeeInput.trim() === "") return 0;
+    return isCkBTC() ? parseFloat(entryFeeInput) : parseInt(entryFeeInput, 10);
+  }
 
   onMount(async () => {
     if (!$authStore.isAuthenticated) {
@@ -103,13 +123,22 @@
   function validateStep2(): boolean {
     errors.entryFee = "";
 
-    if (entryFee < 0) {
-      errors.entryFee = "Entry fee cannot be negative";
+    if (entryFeeInput.trim() === "") {
+      errors.entryFee = "Entry fee is required";
       return false;
     }
 
-    if (!Number.isInteger(entryFee)) {
-      errors.entryFee = "Entry fee must be a whole number";
+    try {
+      if (isCkBTC()) {
+        const ok = /^(\d+)(\.(\d{1,8})?)?$/.test(entryFeeInput.trim());
+        if (!ok) throw new Error("ckBTC supports up to 8 decimal places");
+      } else {
+        if (!/^\d+$/.test(entryFeeInput.trim())) {
+          throw new Error("Entry fee must be a whole number");
+        }
+      }
+    } catch (e: any) {
+      errors.entryFee = e?.message ?? "Invalid entry fee";
       return false;
     }
 
@@ -148,7 +177,7 @@
 
   function calculatePrizePool(): number {
     const maxPlayers = 8;
-    const totalEntry = entryFee * maxPlayers;
+    const totalEntry = readableEntryFee() * maxPlayers;
     const hostFee = (totalEntry * hostFeePercent) / 100;
     return totalEntry - hostFee;
   }
@@ -156,20 +185,35 @@
   async function createGame() {
     if (!validateStep1() || !validateStep2()) {
       addToast({
-        message: "Please fix all validation errors",
+        message:
+          errors.gameName ||
+          errors.entryFee ||
+          "Please fix all validation errors",
         type: "error",
         duration: 3000,
       });
       return;
     }
-
+    let entryFeeParam: bigint;
+    try {
+      entryFeeParam = isCkBTC()
+        ? parseToE8s(entryFeeInput)
+        : parseWholeToBigInt(entryFeeInput);
+    } catch (e: any) {
+      addToast({
+        message: e?.message ?? "Invalid entry fee",
+        type: "error",
+        duration: 3000,
+      });
+      return;
+    }
     isCreating = true;
 
     const params: CreateGameParams = {
       name: gameName.trim(),
       mode: gameMode,
       tokenType,
-      entryFee,
+      entryFee: Number(entryFeeParam as unknown as bigint), // keep field name; no API change
       hostFeePercent,
     };
 
@@ -427,14 +471,15 @@
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-2">
-              ENTRY FEE (Whole {tokenType} only):
+              ENTRY FEE ({isCkBTC()
+                ? "Up to 8 decimals"
+                : "Whole " + tokenType + " only"}):
             </label>
             <input
-              type="number"
-              bind:value={entryFee}
-              min="0"
-              step="1"
-              placeholder="0"
+              type="text"
+              bind:value={entryFeeInput}
+              inputmode="decimal"
+              placeholder={isCkBTC() ? "0.00000000" : "0"}
               class="w-full px-4 py-3 border-4 border-black bg-white text-[#1a0033] font-black text-2xl text-center focus:outline-none focus:border-[#F4E04D] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] {errors.entryFee
                 ? 'border-[#FF6EC7]'
                 : ''}"
@@ -445,9 +490,7 @@
               </p>
             {/if}
             <p class="mt-2 text-[#C9B5E8] text-xs font-bold text-center">
-              Your balance: {balances[tokenType].toFixed(
-                tokenType === "ckBTC" ? 4 : 2,
-              )}
+              Your balance: {balances[tokenType].toFixed(isCkBTC() ? 8 : 2)}
               {tokenType}
             </p>
           </div>
@@ -500,8 +543,8 @@
                 <span class="text-white font-bold text-xs uppercase"
                   >Entry Fee:</span
                 >
-                <span class="text-[#C9B5E8] font-black text-sm"
-                  >{entryFee} {tokenType}</span
+                <span class="text-[#C9B5E8] font-black text-sm">
+                  {readableEntryFee()} {tokenType}</span
                 >
               </div>
               <div class="flex justify-between items-center">
@@ -512,12 +555,15 @@
                   >{hostFeePercent}%</span
                 >
               </div>
-              <div class="flex justify-between items-center pt-2 border-t border-white">
+              <div
+                class="flex justify-between items-center pt-2 border-t border-white"
+              >
                 <span class="text-[#F4E04D] font-bold text-xs uppercase"
                   >Estimated Prize Pool (Max Players):</span
                 >
                 <span class="text-white font-black text-sm">
-                  {calculatePrizePool().toFixed(2)} {tokenType}
+                  {calculatePrizePool().toFixed(2)}
+                  {tokenType}
                 </span>
               </div>
             </div>
@@ -527,7 +573,8 @@
             class="mb-6 bg-[#1a0033] border-2 border-[#C9B5E8] p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             <p class="text-[#C9B5E8] font-bold text-xs text-center uppercase">
-              Host creates the game and manages draws. Players will pay the entry fee when they join.
+              Host creates the game and manages draws. Players will pay the
+              entry fee when they join.
             </p>
           </div>
 

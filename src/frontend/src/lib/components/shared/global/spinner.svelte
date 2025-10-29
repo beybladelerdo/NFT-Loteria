@@ -32,8 +32,8 @@
       </div>
 
       <!-- System Status -->
-      <div class="mt-4 border-2 border-[#00FF00] bg-black px-4 py-2">
-        <p class="text-[#00FF00] font-mono text-sm">
+      <div class="mt-4 border-2 border-[#FF6EC7] bg-black px-4 py-2">
+        <p class="text-[#FF6EC7] font-mono text-sm">
           <span class="animate-pulse">▶</span> SYSTEM INITIALIZING...
         </p>
       </div>

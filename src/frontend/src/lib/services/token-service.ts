@@ -1,8 +1,9 @@
 import { IcrcLedgerCanister } from "@dfinity/ledger-icrc";
 import { Principal } from "@dfinity/principal";
-import { createAgent } from "@dfinity/utils";
+import { ActorFactory } from "$lib/utils/ActorFactory";
+import type { TokenType } from "../../../../declarations/backend/backend.did";
+import { BACKEND_CANISTER_ID } from "$lib/services/game-service";
 
-// Canister IDs
 const CANISTER_IDS = {
   ICP: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   CKBTC: "mxzaz-hqaaa-aaaar-qaada-cai",
@@ -16,9 +17,64 @@ export interface TokenBalance {
   decimals: number;
   icon: string;
   canisterId: string;
+  fee: bigint | null;
 }
-
+export interface PotBalance {
+  amountBaseUnits: bigint;
+}
 export class TokenService {
+  /**
+   * Get the ledger canister ID for a token type.
+   */
+  private getTokenCanisterId(tokenType: TokenType): string {
+    if ("ICP" in tokenType) return CANISTER_IDS.ICP;
+    if ("ckBTC" in tokenType) return CANISTER_IDS.CKBTC;
+    if ("gldt" in tokenType) return CANISTER_IDS.GLDT;
+    throw new Error("Unknown token type");
+  }
+
+  /**
+   * Compute the subaccount hash for a prize pool (pot).
+   */
+  private async computePotSubaccount(gameId: string): Promise<Uint8Array> {
+  const text = `pot:${gameId}`;
+  const encoded = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+  return new Uint8Array(hashBuffer);
+}
+async getPotBalance(
+  gameId: string,
+  tokenType: TokenType,
+  identity: any,
+): Promise<PotBalance> {
+  try {
+    const tokenCanisterId = this.getTokenCanisterId(tokenType);
+    const agent = await ActorFactory.getAgent(tokenCanisterId, identity);
+    
+    const ledger = IcrcLedgerCanister.create({
+      agent,
+      canisterId: Principal.fromText(tokenCanisterId),
+    });
+    
+    const subaccount = await this.computePotSubaccount(gameId);
+    
+    const balance = await ledger.balance({
+      owner: Principal.fromText(BACKEND_CANISTER_ID),
+      subaccount: Array.from(subaccount),
+      certified: false,
+    });
+    
+    return {
+      amountBaseUnits: balance,
+    };
+  } catch (error) {
+    console.error(`Error fetching pot balance for game ${gameId}:`, error);
+    throw error;
+  }
+}
+  /**
+   * Approve an allowance for a spender.
+   */
   async approve(
     canisterId: string,
     identity: any,
@@ -31,13 +87,7 @@ export class TokenService {
       expectedAllowance?: bigint;
     },
   ): Promise<bigint> {
-    const agent = await createAgent({
-      identity,
-      host:
-        import.meta.env.VITE_DFX_NETWORK === "ic"
-          ? "https://icp-api.io"
-          : "http://localhost:4943",
-    });
+    const agent = await ActorFactory.getAgent(canisterId, identity);
 
     const ledger = IcrcLedgerCanister.create({
       agent,
@@ -45,7 +95,7 @@ export class TokenService {
     });
 
     const nowNs = BigInt(Date.now()) * 1_000_000n;
-    const expiresAtNs = nowNs + 5n * 60n * 1_000_000_000n;
+    const expiresAtNs = nowNs + 5n * 60n * 1_000_000_000n; // 5 minutes
 
     const res = await ledger.approve({
       amount: args.amount,
@@ -81,19 +131,16 @@ export class TokenService {
     return res;
   }
 
+  /**
+   * Get the token balance for a specific canister.
+   */
   async getTokenBalance(
     canisterId: string,
     owner: Principal,
     identity: any,
   ): Promise<bigint> {
     try {
-      const agent = await createAgent({
-        identity,
-        host:
-          import.meta.env.VITE_DFX_NETWORK === "ic"
-            ? "https://icp-api.io"
-            : "http://localhost:4943",
-      });
+      const agent = await ActorFactory.getAgent(canisterId, identity);
 
       const ledger = IcrcLedgerCanister.create({
         agent,
@@ -108,10 +155,33 @@ export class TokenService {
       return balance;
     } catch (error) {
       console.error(`Error fetching balance for ${canisterId}:`, error);
-      return BigInt(0);
+      return 0n;
     }
   }
 
+  /**
+   * Get the transaction fee for a given ledger canister.
+   */
+  async getTransactionFee(canisterId: string, identity: any): Promise<bigint> {
+    try {
+      const agent = await ActorFactory.getAgent(canisterId, identity);
+
+      const ledger = IcrcLedgerCanister.create({
+        agent,
+        canisterId: Principal.fromText(canisterId),
+      });
+
+      const fee = await ledger.transactionFee({ certified: false });
+      return fee;
+    } catch (error) {
+      console.error(`Error fetching transaction fee for ${canisterId}:`, error);
+      return 0n;
+    }
+  }
+
+  /**
+   * Fetch balances for all supported tokens (ICP, ckBTC, GLDT).
+   */
   async getAllBalances(
     owner: Principal,
     identity: any,
@@ -130,6 +200,7 @@ export class TokenService {
         decimals: 8,
         icon: "/tokens/ICP.svg",
         canisterId: CANISTER_IDS.ICP,
+        fee: await this.getTransactionFee(CANISTER_IDS.ICP, identity),
       },
       {
         symbol: "ckBTC",
@@ -138,6 +209,7 @@ export class TokenService {
         decimals: 8,
         icon: "/tokens/ck-BTC.svg",
         canisterId: CANISTER_IDS.CKBTC,
+        fee: await this.getTransactionFee(CANISTER_IDS.CKBTC, identity),
       },
       {
         symbol: "GLDT",
@@ -146,10 +218,14 @@ export class TokenService {
         decimals: 8,
         icon: "/tokens/gldt.png",
         canisterId: CANISTER_IDS.GLDT,
+        fee: await this.getTransactionFee(CANISTER_IDS.GLDT, identity),
       },
     ];
   }
 
+  /**
+   * Convert a raw balance (bigint) into a human-readable string.
+   */
   formatBalance(balance: bigint, decimals: number): string {
     const divisor = BigInt(10 ** decimals);
     const whole = balance / divisor;

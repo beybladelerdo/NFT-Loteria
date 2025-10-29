@@ -38,6 +38,7 @@ persistent actor GameLogic {
   private var admins = Map.empty<Principal, Bool>();
   private var paidSet = Map.empty<PaidKey, Bool>();
 
+  let e8 : Nat = 100_000_000;
   let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   let digits = Text.toArray("0123456789");
   transient let rng = PRNG.sfc64a();
@@ -235,6 +236,86 @@ persistent actor GameLogic {
       case (?g) { #ok(?Utils.toGameView(g)) };
     };
   };
+  public query func getGameDetail(dto : Queries.GetGame) : async Result.Result<Queries.GameDetail, Text> {
+    let ?game = Map.get<Text, T.Game>(games, Text.compare, dto.gameId)
+      else return #err("No Game found");
+
+    let hostProfile : Queries.BasicProfile = {
+      principal = game.host;
+      username = switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, game.host)) {
+        case (?prof) ?prof.username;
+        case null null;
+      };
+    };
+
+    let playerSummaries = Array.map<Ids.PlayerId, Queries.PlayerSummary>(
+      game.players,
+      func (player : Ids.PlayerId) : Queries.PlayerSummary {
+        let username = switch (Map.get<Principal, T.Profile>(profiles, Principal.compare, player)) {
+          case (?prof) ?prof.username;
+          case null null;
+        };
+
+        let tablasForPlayer = Array.filter<(Ids.PlayerId, Ids.TablaId)>(
+          game.tablas,
+          func (entry : (Ids.PlayerId, Ids.TablaId)) : Bool {
+            Principal.equal(entry.0, player);
+          },
+        );
+
+        let tablaSummaries = Array.map<(Ids.PlayerId, Ids.TablaId), Queries.TablaInGame>(
+          tablasForPlayer,
+          func (entry : (Ids.PlayerId, Ids.TablaId)) : Queries.TablaInGame {
+            let tablaId = entry.1;
+            switch (Map.get<Nat32, T.Tabla>(tablas, Nat32.compare, tablaId)) {
+              case (?tabla) {
+                {
+                  tablaId = tablaId;
+                  name = tabla.metadata.name;
+                  image = tabla.metadata.image;
+                  cards = tabla.metadata.cards;
+                };
+              };
+              case null {
+                {
+                  tablaId = tablaId;
+                  name = "Tabla #" # Nat.toText(Nat32.toNat(tablaId));
+                  image = "";
+                  cards = [];
+                };
+              };
+            };
+          },
+        );
+
+        {
+          principal = player;
+          username = username;
+          tablas = tablaSummaries;
+        };
+      },
+    );
+
+    #ok({
+      id = game.id;
+      name = game.name;
+      host = hostProfile;
+      status = game.status;
+      mode = game.mode;
+      tokenType = game.tokenType;
+      entryFee = game.entryFee;
+      hostFeePercent = game.hostFeePercent;
+      createdAt = game.createdAt;
+      drawnCards = game.drawnCards;
+      currentCard = game.currentCard;
+      prizePool = game.prizePool;
+      players = playerSummaries;
+      playerCount = Array.size(game.players);
+      maxPlayers = Constants.MAX_PLAYERS_PER_GAME;
+      marks = game.marcas;
+      winner = game.winner;
+    });
+  };
 
   public query func getDrawHistory(dto : Queries.GetDrawHistory) : async Result.Result<[Ids.CardId], Text> {
     switch (Map.get<Text, T.Game>(games, Text.compare, dto.gameId)) {
@@ -267,7 +348,11 @@ persistent actor GameLogic {
       status = #lobby;
       mode = params.mode;
       tokenType = params.tokenType;
-      entryFee = params.entryFee;
+      entryFee = switch (params.tokenType) {
+        case (#ICP)   params.entryFee * e8;
+        case (#gldt)  params.entryFee * e8;
+        case (#ckBTC) params.entryFee;
+      };
       hostFeePercent = params.hostFeePercent;
       players = [];
       tablas = [];
@@ -282,70 +367,66 @@ persistent actor GameLogic {
   };
 
   public shared ({ caller }) func joinGame(dto : Commands.JoinGame) : async Result.Result<(), Text> {
-    if (Principal.isAnonymous(caller)) return #err("Anonymous identity cannot join games");
+  if (Principal.isAnonymous(caller)) return #err("Anonymous identity cannot join games");
 
-    let ?game = Map.get<Text, T.Game>(games, Text.compare, dto.gameId)
-      else return #err("Game not found");
+  let ?game = Map.get<Text, T.Game>(games, Text.compare, dto.gameId)
+    else return #err("Game not found");
 
-    if (Principal.equal(caller, game.host)) return #err("Host cannot join their own game");
-    if (game.status != #lobby)  return #err("Game is not in lobby state");
-    if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) return #err("Game is full");
-    for (p in game.players.values()) if (Principal.equal(p, caller)) return #err("Player already in game");
+  if (Principal.equal(caller, game.host)) return #err("Host cannot join their own game");
+  if (game.status != #lobby) return #err("Game is not in lobby state");
+  if (game.players.size() >= Constants.MAX_PLAYERS_PER_GAME) return #err("Game is full");
+  for (p in game.players.values()) if (Principal.equal(p, caller)) return #err("Player already in game");
 
-    if (not hasPaid(dto.gameId, caller)) {
-      let l       = Escrow.ledgerOf(game.tokenType);
-      let now_ns  = Nat64.fromNat(Int.abs(Time.now()));
-      let from    = Escrow.acct(caller, null);
-      let to      = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(dto.gameId)));
-      let spender = Escrow.acct(Principal.fromActor(GameLogic), null);
+  // ---- payment / allowance as you already have ----
+  if (not hasPaid(dto.gameId, caller)) {
+    let l       = Escrow.ledgerOf(game.tokenType);
+    let now_ns  = Nat64.fromNat(Int.abs(Time.now()));
+    let from    = Escrow.acct(caller, null);
+    let to      = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(dto.gameId)));
+    let spender = Escrow.acct(Principal.fromActor(GameLogic), null);
 
-      let a = await l.icrc2_allowance({ account = from; spender });
-      switch (a.expires_at) {
-        case (?exp) {
-          if (exp <= now_ns / 1_000_000_000) return #err("Allowance expired; approve again");
-        };
-        case null {};
-      };
-      if (a.allowance < game.entryFee)
-        return #err("Allowance too low; approve at least the entry amount");
+    let a = await l.icrc2_allowance({ account = from; spender });
+    switch (a.expires_at) { case (?exp) { if (exp <= now_ns / 1_000_000_000) return #err("Allowance expired; approve again") }; case null {} };
+    if (a.allowance < game.entryFee) return #err("Allowance too low; approve at least the entry amount");
 
-      let pulled = await l.icrc2_transfer_from({
-        from; to; amount = game.entryFee;
-        fee = null; memo = null;
-        created_at_time = ?now_ns;
-        spender_subaccount = null
-      });
+    let pulled = await l.icrc2_transfer_from({
+      from; to; amount = game.entryFee;
+      fee = null; memo = null;
+      created_at_time = ?now_ns;
+      spender_subaccount = null
+    });
 
-      switch (pulled) {
-        case (#Ok _)     { markPaid(dto.gameId, caller) };
-        case (#Err err)  {
-          return #err(
-            switch err {
-              case (#InsufficientAllowance)        "Insufficient allowance";
-              case (#InsufficientFunds)            "Insufficient funds";
-              case (#Expired)                      "Transfer expired; try again";
-              case (#TemporarilyUnavailable)       "Ledger temporarily unavailable";
-              case (#BadFee { })      "Bad fee";
-              case (#Duplicate {  })   "Duplicate transfer";
-              case (#BadBurn {  })  "Bad burn";
-              case (#GenericError { message })     "Ledger error: " # message;
-            }
-          );
-        };
-      };
+    switch (pulled) {
+      case (#Ok _)    { markPaid(dto.gameId, caller) };
+      case (#Err err) { return #err(
+        switch err {
+          case (#InsufficientAllowance) "Insufficient allowance";
+          case (#InsufficientFunds)     "Insufficient funds";
+          case (#Expired)               "Transfer expired; try again";
+          case (#TemporarilyUnavailable) "Ledger temporarily unavailable";
+          case (#BadFee {})             "Bad fee";
+          case (#Duplicate {})          "Duplicate transfer";
+          case (#BadBurn {})            "Bad burn";
+          case (#GenericError { message }) "Ledger error: " # message;
+        }) };
     };
-    let playerlist = List.fromArray<Ids.PlayerId>(game.players);
-    List.add<Ids.PlayerId>(playerlist, caller);
-    let updatedPlayers = List.toArray(playerlist);
-
-    switch (addTablaToGame(caller, dto.gameId, dto.rentedTablaId)) {
-      case (#ok _)  {};
-      case (#err e) { return #err(e) };
-    };
-
-    Map.add<Text, T.Game>(games, Text.compare, dto.gameId, { game with players = updatedPlayers });
-    #ok(());
   };
+
+  // >>> persist the player first <<<
+  let playerlist = List.fromArray<Ids.PlayerId>(game.players);
+  List.add<Ids.PlayerId>(playerlist, caller);
+  let updatedPlayers = List.toArray(playerlist);
+  Map.add<Text, T.Game>(games, Text.compare, dto.gameId, { game with players = updatedPlayers });
+
+  // now add tabla (this reads the game again, but the player IS already there)
+  switch (addTablaToGame(caller, dto.gameId, dto.rentedTablaId)) {
+    case (#ok _) {};
+    case (#err e) { return #err(e) };
+  };
+
+  #ok(())
+};
+
 
 
   func addTablaToGame(caller : Principal, gameId : Text, tablaId : Ids.TablaId) : Result.Result<(), Text> {
@@ -800,5 +881,8 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
         };
       #ok(());
     }
-  }
+  };
+  public query func gameCount() : async Nat {
+    Map.size(games);
+  };
 };

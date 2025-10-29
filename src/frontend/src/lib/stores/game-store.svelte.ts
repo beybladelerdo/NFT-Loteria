@@ -1,6 +1,7 @@
 import { GameService } from "$lib/services/game-service";
 import type {
   GameView,
+  GameDetail,
   TablaInfo,
 } from "../../../../declarations/backend/backend.did";
 import type {
@@ -19,6 +20,7 @@ export interface GameStoreData {
 let openGames = $state<GameView[]>([]);
 let activeGames = $state<GameView[]>([]);
 let currentGame = $state<GameView | null>(null);
+let currentGameDetail = $state<GameDetail | null>(null);
 let availableTablas = $state<TablaInfo[]>([]);
 let isLoading = $state(false);
 
@@ -31,6 +33,9 @@ export const gameStore = {
   },
   get currentGame() {
     return currentGame;
+  },
+  get currentGameDetail() {
+    return currentGameDetail;
   },
   get availableTablas() {
     return availableTablas;
@@ -65,12 +70,19 @@ export const gameStore = {
   async fetchGameById(gameId: string) {
     isLoading = true;
     try {
-      const game = await new GameService().getGame(gameId);
+      const service = new GameService();
+      const [game, detail] = await Promise.all([
+        service.getGame(gameId),
+        service.getGameDetail(gameId),
+      ]);
       currentGame = game ?? null;
-      return game;
+      currentGameDetail = detail ?? null;
+      return { game, detail };
     } catch (error) {
       console.error("Error fetching game:", error);
-      return null;
+      currentGame = null;
+      currentGameDetail = null;
+      return { game: null, detail: null };
     } finally {
       isLoading = false;
     }
@@ -183,6 +195,23 @@ export const gameStore = {
       return { success: false, error: result.error };
     } catch (error: any) {
       console.error("Error claiming win:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async markPosition(
+    gameId: string,
+    tablaId: number,
+    pos: { row: number; col: number },
+  ) {
+    try {
+      const result = await new GameService().markPosition(gameId, tablaId, pos);
+      if (result.success) {
+        await gameStore.fetchGameById(gameId);
+        return { success: true };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error marking position:", error);
       return { success: false, error: error?.message ?? String(error) };
     }
   },

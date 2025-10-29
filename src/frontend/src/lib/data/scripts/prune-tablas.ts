@@ -8,7 +8,6 @@ const DRY = process.env.DRY_RUN === "1";
 const MIN_ID = 1;
 const MAX_ID = 1026;
 
-
 const EXTS = [".png", ".jpg"];
 
 async function fileExists(p: string) {

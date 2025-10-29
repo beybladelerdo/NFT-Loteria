@@ -41,10 +41,13 @@ export const tablaImages = toSortedUrls(filteredTablaMods);
 
 export const tablaUrlById: Map<number, string> = new Map(
   Object.entries(filteredTablaMods)
-    .map(([path, mod]) => [
-      idFromPath(path), 
-      (mod as { default: string }).default  // ← FIX: Extract .default
-    ] as [number, string])
+    .map(
+      ([path, mod]) =>
+        [
+          idFromPath(path),
+          (mod as { default: string }).default, // ← FIX: Extract .default
+        ] as [number, string],
+    )
     .filter(([id]) => id > 0),
 );
 

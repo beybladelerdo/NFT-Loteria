@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { gameStore } from "$lib/stores/game-store.svelte";
-  import { getTablaUrl } from "$lib/data/gallery"; // your corrected path
+  import { getTablaUrl } from "$lib/data/gallery";
 
   interface Props {
     selectedTablaId: number | null;
@@ -16,6 +16,13 @@
     | { epic: null }
     | { legendary: null };
 
+  // include tokenType so we can sort by it
+  type TokenType =
+    | { ICP: null }
+    | { ckBTC: null }
+    | { GLDT: null }
+    | Record<string, null>; // future-proof
+
   interface TablaInfo {
     id: number;
     name: string;
@@ -23,6 +30,7 @@
     rentalFee: bigint;
     rarity: Rarity;
     status: { available: null } | { rented: null } | { inGame: null };
+    tokenType: TokenType; // NEW
   }
 
   // state
@@ -31,12 +39,13 @@
   let error = $state("");
 
   // sorting + pagination state
-  let sortBy = $state<"id" | "rarity">("id");
+  type SortKey = "id" | "rarity" | "token";
+  let sortBy = $state<SortKey>("id");
   let sortDir = $state<"asc" | "desc">("asc");
   let page = $state(1);
   let pageSize = $state(8);
 
-  // ---- derived helpers (runes mode) ----
+  // ---- helpers ----
   const rarityRank = (r: Rarity) =>
     "legendary" in r
       ? 4
@@ -48,12 +57,24 @@
             ? 1
             : 0;
 
+  const tokenKey = (t: TokenType): string => {
+    // stable key for sorting. put common ones first in a custom order
+    if ("ICP" in t) return "0-ICP";
+    if ("ckBTC" in t) return "1-ckBTC";
+    if ("GLDT" in t) return "2-GLDT";
+    // unknowns sorted after known
+    const k = Object.keys(t)[0] ?? "ZZZ";
+    return `9-${k}`;
+  };
+
   const sortedTablas = $derived(
     [...tablas].sort((a, b) => {
-      let cmp =
-        sortBy === "id"
-          ? a.id - b.id
-          : rarityRank(a.rarity) - rarityRank(b.rarity);
+      let cmp = 0;
+      if (sortBy === "id") cmp = a.id - b.id;
+      else if (sortBy === "rarity")
+        cmp = rarityRank(a.rarity) - rarityRank(b.rarity);
+      else if (sortBy === "token")
+        cmp = tokenKey(a.tokenType).localeCompare(tokenKey(b.tokenType));
       return sortDir === "asc" ? cmp : -cmp;
     }),
   );
@@ -62,7 +83,6 @@
     Math.max(1, Math.ceil(sortedTablas.length / pageSize)),
   );
 
-  // keep page in range when data or pageSize changes
   $effect(() => {
     if (page > totalPages) page = totalPages;
     if (page < 1) page = 1;
@@ -82,10 +102,11 @@
           return {
             id,
             name: t.name ?? `Tabla #${id}`,
-            image: getTablaUrl(id), // <<< resolve to real Vite URL
+            image: getTablaUrl(id),
             rentalFee: t.rentalFee as bigint,
             rarity: t.rarity as Rarity,
             status: t.status,
+            tokenType: t.tokenType as TokenType, // NEW
           };
         });
       } else {
@@ -99,13 +120,12 @@
     }
   });
 
-  // interactions
   function handleSelect(tabla: TablaInfo) {
     selectedTablaId = tabla.id;
     onSelect(tabla.id, tabla.rentalFee);
   }
 
-  // UI colors/text
+  // UI
   function getRarityColor(r: Rarity): string {
     if ("common" in r) return "#C9B5E8";
     if ("uncommon" in r) return "#F4E04D";
@@ -119,8 +139,19 @@
     if ("uncommon" in r) return "UNCOMMON";
     if ("rare" in r) return "RARE";
     if ("epic" in r) return "EPIC";
-    if ("legendary" in r) return "LEGENDARY";
+    if ("legendary" in r) return "ULTRA RARE";
     return "UNKNOWN";
+  }
+
+  // extra “flare” class for rare+ tiers
+  function rareFlare(r: Rarity): string {
+    if ("legendary" in r)
+      return "before:absolute before:inset-0 before:rounded-md before:animate-pulse before:bg-gradient-to-r before:from-yellow-300/20 before:via-fuchsia-300/10 before:to-yellow-300/20";
+    if ("epic" in r)
+      return "before:absolute before:inset-0 before:rounded-md before:animate-pulse before:bg-gradient-to-r before:from-purple-400/15 before:to-pink-400/15";
+    if ("rare" in r)
+      return "before:absolute before:inset-0 before:rounded-md before:animate-pulse before:bg-[radial-gradient(circle_at_50%_0%,rgba(255,110,199,0.20),transparent_60%)]";
+    return "";
   }
 </script>
 
@@ -145,13 +176,18 @@
   <!-- Controls -->
   <div class="flex flex-wrap items-center gap-2 mb-3">
     <label class="text-xs font-bold text-white">Sort by</label>
-    <select bind:value={sortBy} class="px-2 py-1 text-xs border-2 border-black">
-      <option value="id" >ID</option>
+    <select
+      bind:value={sortBy}
+      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
+    >
+      <option value="id">ID</option>
       <option value="rarity">Rarity</option>
+      <option value="token">Token</option>
+      <!-- NEW -->
     </select>
     <select
       bind:value={sortDir}
-      class="px-2 py-1 text-xs border-2 border-black"
+      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
     >
       <option value="asc">Asc</option>
       <option value="desc">Desc</option>
@@ -160,7 +196,7 @@
     <label class="ml-4 text-xs font-bold text-white">Page size</label>
     <select
       bind:value={pageSize}
-      class="px-2 py-1 text-xs border-2 border-black"
+      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
     >
       <option>4</option><option>8</option><option>12</option><option>16</option>
     </select>
@@ -205,11 +241,15 @@
             ? 'ring-4 ring-[#F4E04D] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'
             : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'}"
         >
-          <img
-            src={tabla.image}
-            alt={tabla.name}
-            class="w-full aspect-square object-cover border-2 border-[#C9B5E8]"
-          />
+          <!-- rarity flare wrapper -->
+          <div class={"relative rounded-md " + rareFlare(tabla.rarity)}>
+            <!-- ensure entire tabla visible -->
+            <img
+              src={tabla.image}
+              alt={tabla.name}
+              class="w-full h-48 md:h-56 object-contain bg-[#0f0220] rounded-md border-2 border-[#C9B5E8]"
+            />
+          </div>
 
           {#if selectedTablaId === tabla.id}
             <div
@@ -227,17 +267,18 @@
             <p class="text-xs font-bold text-white text-center uppercase">
               {tabla.name}
             </p>
+
+            <!-- rarity badge -->
             <div
-              class="text-[10px] font-bold text-center px-2 py-0.5 border border-black"
+              class="text-[10px] font-bold text-center px-2 py-0.5 border border-black rounded"
               style="background-color: {getRarityColor(
                 tabla.rarity,
               )}; color: #1a0033;"
             >
               {getRarityText(tabla.rarity)}
             </div>
-            <p class="text-[10px] font-bold text-[#C9B5E8] text-center">
-              No rental fee
-            </p>
+
+            <!-- rental fee banner removed -->
           </div>
         </button>
       {/each}
@@ -247,14 +288,18 @@
       <button
         class="px-3 py-1 border-2 border-black bg-[#C9B5E8] font-bold disabled:opacity-50"
         disabled={page === 1}
-        onclick={() => (page = Math.max(1, page - 1))}>Prev</button
+        onclick={() => (page = Math.max(1, page - 1))}
       >
+        Prev
+      </button>
       <span class="text-white text-sm">Page {page} / {totalPages}</span>
       <button
         class="px-3 py-1 border-2 border-black bg-[#C9B5E8] font-bold disabled:opacity-50"
         disabled={page === totalPages}
-        onclick={() => (page = Math.min(totalPages, page + 1))}>Next</button
+        onclick={() => (page = Math.min(totalPages, page + 1))}
       >
+        Next
+      </button>
     </div>
 
     {#if selectedTablaId}
@@ -263,9 +308,6 @@
       >
         <p class="text-[#F4E04D] font-bold text-sm text-center uppercase">
           ✓ TABLA #{selectedTablaId} SELECTED
-        </p>
-        <p class="text-[#C9B5E8] font-bold text-xs text-center mt-1">
-          Rental Fee: Free
         </p>
       </div>
     {/if}

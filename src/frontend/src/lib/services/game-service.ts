@@ -3,6 +3,7 @@ import { authStore } from "$lib/stores/auth-store";
 import type {
   _SERVICE,
   GameView,
+  GameDetail,
   Profile,
   TablaInfo,
   GameMode,
@@ -22,9 +23,11 @@ import type {
   Result_9,
   Result_10,
   Result_11,
+  Result_12,
+  Result_13,
 } from "../../../../declarations/backend/backend.did";
 
-const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
+export const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 
 function unwrapOpt<T>(opt: [] | [T]): T | null {
   return (opt as any)?.length ? (opt as [T])[0] : null;
@@ -74,7 +77,7 @@ function parseRarity(rarity: string): Rarity {
   if (normalized === "uncommon") return { uncommon: null };
   if (normalized === "rare") return { rare: null };
   if (normalized === "epic") return { epic: null };
-  if (normalized === "legendary") return { legendary: null };
+  if (normalized === "ultra rare") return { legendary: null };
   return { common: null }; // default
 }
 
@@ -105,7 +108,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetActiveGames = { page: BigInt(page) };
-      const res: Result_9 = await actor.getActiveGames(dto);
+      const res: Result_10 = await actor.getActiveGames(dto);
       if ("err" in res) return [];
       return res.ok.activeGames;
     } catch (e) {
@@ -118,11 +121,23 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_6 = await actor.getGame(dto);
+      const res: Result_7 = await actor.getGame(dto);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
       console.error("getGame failed:", e);
+      return null;
+    }
+  }
+  async getGameDetail(gameId: string): Promise<GameDetail | null> {
+    try {
+      const actor = await this.getActor();
+      const dto: GetGame = { gameId };
+      const res: Result_6 = await actor.getGameDetail(dto);
+      if ("err" in res) return null;
+      return res.ok;
+    } catch (e) {
+      console.error("getGameDetail failed:", e);
       return null;
     }
   }
@@ -152,7 +167,7 @@ export class GameService {
         };
       }
       const actor = await this.getActor();
-      const res: Result_11 = await actor.createGame({
+      const res: Result_12 = await actor.createGame({
         name: params.name,
         mode: toMode(params.mode),
         tokenType: toToken(params.tokenType),
@@ -214,7 +229,7 @@ export class GameService {
   ): Promise<{ success: boolean; cardId?: number; error?: string }> {
     try {
       const actor = await this.getActor();
-      const res: Result_10 = await actor.drawCard(gameId);
+      const res: Result_11 = await actor.drawCard(gameId);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true, cardId: Number(res.ok) };
     } catch (e: any) {
@@ -226,7 +241,7 @@ export class GameService {
   async getDrawHistory(gameId: string): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_7 = await actor.getDrawHistory({ gameId });
+      const res: Result_8 = await actor.getDrawHistory({ gameId });
       if ("err" in res) return [];
       return Array.from(res.ok as ArrayLike<number>, Number);
     } catch (e) {
@@ -255,7 +270,7 @@ export class GameService {
   async getAvailableTablas(): Promise<TablaInfo[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_8 = await actor.getAvailableTablas();
+      const res: Result_9 = await actor.getAvailableTablas();
       if ("err" in res) return [];
       return res.ok;
     } catch (e) {
