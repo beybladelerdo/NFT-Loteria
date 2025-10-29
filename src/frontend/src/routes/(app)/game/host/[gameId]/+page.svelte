@@ -407,7 +407,7 @@ const playersStats = $derived(
               <div class="flex justify-between gap-4">
                 <span class="text-[#C9B5E8]">Entry Fee</span>
                 <span class="text-right">
-                  {formattedPotBalance}
+                                    {tokenService.formatBalance(gameDetail.entryFee, 8)}
                   &nbsp;{tokenSymbol(gameDetail.tokenType)}
                 </span>
               </div>
@@ -418,7 +418,7 @@ const playersStats = $derived(
               <div class="flex justify-between gap-4">
                 <span class="text-[#C9B5E8]">Prize Pool</span>
                 <span class="text-right">
-                  {formatAmount(gameDetail.prizePool, gameDetail.tokenType)}
+                  {formattedPotBalance}
                   &nbsp;{tokenSymbol(gameDetail.tokenType)}
                 </span>
               </div>
