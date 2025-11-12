@@ -297,11 +297,9 @@
             <div
               class="bg-white border-2 border-black p-4 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <div class="text-3xl font-black text-[#1a0033]">
-                {(user.winRate * 100).toFixed(1)}%
-              </div>
+              <div class="text-3xl font-black text-[#1a0033]">0</div>
               <div class="text-xs font-bold text-[#1a0033] uppercase mt-1">
-                Win Rate
+                Win Streak
               </div>
             </div>
           </div>

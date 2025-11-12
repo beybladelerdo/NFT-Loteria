@@ -52,6 +52,7 @@ public type Icrc1TransferResult = { #Ok : Nat; #Err : Icrc1TransferErr };
   public type Ledger = actor {
     icrc1_symbol : shared query () -> async Text;
     icrc1_decimals : shared query () -> async Nat8;
+    icrc1_fee : shared query () -> async Nat;
     icrc1_transfer : shared (Icrc1TransferArgs) -> async Icrc1TransferResult;
     icrc1_balance_of : shared query (Account) -> async Nat;
     icrc2_allowance : shared query (AllowanceArgs) -> async Allowance;

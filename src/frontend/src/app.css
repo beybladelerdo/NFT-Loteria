@@ -90,3 +90,23 @@ body {
     box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
   }
 }
+.pixel-panel {
+  --panel: #2b0f55; /* deep purple */
+  --edge: #000; /* black edge */
+  --accent: #ffdd33; /* arcade yellow */
+  background: var(--panel);
+  border: 3px solid var(--edge);
+  box-shadow:
+    3px 3px 0 var(--edge),
+    0 0 0 3px var(--accent) inset;
+  border-radius: 6px;
+}
+.pixel-button {
+  border: 3px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  background: #fff;
+}
+.pixel-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #000;
+}

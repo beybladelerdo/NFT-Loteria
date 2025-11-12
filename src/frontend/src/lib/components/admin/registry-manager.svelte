@@ -133,7 +133,7 @@
       {#if isMainnet}
         <div class="text-center">
           <button
-            on:click={handleRefreshRegistry}
+            onclick={handleRefreshRegistry}
             disabled={isRefreshing}
             class="bg-[#522785] text-white px-8 py-4 font-black uppercase border-4 border-black hover:bg-[#6d3399] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all text-lg"
             style="box-shadow: 4px 4px 0px #000;"
@@ -158,7 +158,7 @@
         <div class="mt-2 text-right">
           <!-- svelte-ignore event_directive_deprecated -->
           <button
-            on:click={handleInitRegistryManual}
+            onclick={handleInitRegistryManual}
             disabled={isRefreshing}
             class="bg-[#29ABE2] text-black px-6 py-2 font-black uppercase border-4 border-black hover:brightness-110 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all text-sm"
             style="box-shadow: 4px 4px 0px #000;"

@@ -7,6 +7,11 @@ export const AUTH_POPUP_HEIGHT = 625;
 
 export const AUTH_TIMER_INTERVAL = 1000;
 export const CODE_TIMER_INTERVAL = 10000;
+export const MIN_BY_TOKEN: Record<"ICP" | "ckBTC" | "GLDT", bigint> = {
+  ICP: 5_000_000n,
+  ckBTC: 1_000n,
+  GLDT: 100_000_000n,
+};
 
 export const SECONDS_IN_MINUTE = 60;
 export const MINUTES_IN_HOUR = 60;

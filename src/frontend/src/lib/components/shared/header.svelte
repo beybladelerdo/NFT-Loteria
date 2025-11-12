@@ -47,7 +47,7 @@
     <!-- Logo -->
     <a href="/" class="flex items-center gap-2">
       <img
-        src="/favicons/web-app-manifest-512x512.png"
+        src="/new_logo.png"
         alt="NFT Lotería Logo"
         class="w-10 h-10 border-4 border-black"
         style="box-shadow: 3px 3px 0 #C9B5E8;"
@@ -150,7 +150,7 @@
             class="block px-4 py-3 text-sm font-bold text-white hover:bg-[#522785] transition border-b-2 border-black"
             onclick={() => (showDropdown = false)}
           >
-            VIEW PROFILE &gt;&gt;
+            WALLET &gt;&gt;
           </a>
           <button
             onclick={handleSignOut}

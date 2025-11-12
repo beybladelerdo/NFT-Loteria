@@ -37,41 +37,41 @@ export class TokenService {
    * Compute the subaccount hash for a prize pool (pot).
    */
   private async computePotSubaccount(gameId: string): Promise<Uint8Array> {
-  const text = `pot:${gameId}`;
-  const encoded = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
-  return new Uint8Array(hashBuffer);
-}
-async getPotBalance(
-  gameId: string,
-  tokenType: TokenType,
-  identity: any,
-): Promise<PotBalance> {
-  try {
-    const tokenCanisterId = this.getTokenCanisterId(tokenType);
-    const agent = await ActorFactory.getAgent(tokenCanisterId, identity);
-    
-    const ledger = IcrcLedgerCanister.create({
-      agent,
-      canisterId: Principal.fromText(tokenCanisterId),
-    });
-    
-    const subaccount = await this.computePotSubaccount(gameId);
-    
-    const balance = await ledger.balance({
-      owner: Principal.fromText(BACKEND_CANISTER_ID),
-      subaccount: Array.from(subaccount),
-      certified: false,
-    });
-    
-    return {
-      amountBaseUnits: balance,
-    };
-  } catch (error) {
-    console.error(`Error fetching pot balance for game ${gameId}:`, error);
-    throw error;
+    const text = `pot:${gameId}`;
+    const encoded = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
+    return new Uint8Array(hashBuffer);
   }
-}
+  async getPotBalance(
+    gameId: string,
+    tokenType: TokenType,
+    identity: any,
+  ): Promise<PotBalance> {
+    try {
+      const tokenCanisterId = this.getTokenCanisterId(tokenType);
+      const agent = await ActorFactory.getAgent(tokenCanisterId, identity);
+
+      const ledger = IcrcLedgerCanister.create({
+        agent,
+        canisterId: Principal.fromText(tokenCanisterId),
+      });
+
+      const subaccount = await this.computePotSubaccount(gameId);
+
+      const balance = await ledger.balance({
+        owner: Principal.fromText(BACKEND_CANISTER_ID),
+        subaccount: Array.from(subaccount),
+        certified: false,
+      });
+
+      return {
+        amountBaseUnits: balance,
+      };
+    } catch (error) {
+      console.error(`Error fetching pot balance for game ${gameId}:`, error);
+      throw error;
+    }
+  }
   /**
    * Approve an allowance for a spender.
    */

@@ -1,4 +1,5 @@
 import { ActorFactory } from "../utils/ActorFactory";
+import { Principal } from "@dfinity/principal";
 import { authStore } from "$lib/stores/auth-store";
 import type {
   _SERVICE,
@@ -27,7 +28,10 @@ import type {
   Result_13,
 } from "../../../../declarations/backend/backend.did";
 
-export const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
+export type PrincipalEntry = Array<[number, [] | [Principal]]>;
+
+export const BACKEND_CANISTER_ID =
+  import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 
 function unwrapOpt<T>(opt: [] | [T]): T | null {
   return (opt as any)?.length ? (opt as [T])[0] : null;
@@ -184,11 +188,11 @@ export class GameService {
 
   async joinGame(
     gameId: string,
-    rentedTablaId: number,
+    rentedTablaIds: number[],
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const actor = await this.getActor();
-      const dto: JoinGame = { gameId, rentedTablaId };
+      const dto: JoinGame = { gameId, rentedTablaIds };
       const res: Result = await actor.joinGame(dto);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true };
@@ -406,4 +410,31 @@ export class GameService {
       return { success: false, error: e?.message ?? String(e) };
     }
   }
+  async upsertOwners(
+    entries: PrincipalEntry,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.upsertOwnerPrincipals(entries);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("startGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async getAvailableTablasForGame(
+  gameId: string,
+): Promise<{ success: boolean; tablas?: any[]; error?: string }> {
+  try {
+    const actor = await this.getActor();
+    const res:Result_9 = await actor.getAvailableTablasForGame(gameId);
+    if ("err" in res) return { success: false, error: res.err };
+    return { success: true, tablas: res.ok };
+  } catch (e: any) {
+    console.error("getAvailableTablasForGame failed:", e);
+    return { success: false, error: e?.message ?? String(e) };
+  }
+}
+
 }

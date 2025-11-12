@@ -12,7 +12,7 @@ module Commands {
 
   public type JoinGame = {
     gameId : Text;
-    rentedTablaId : Ids.TablaId;
+    rentedTablaIds : [Ids.TablaId];
   };
 
   public type StartGame = {

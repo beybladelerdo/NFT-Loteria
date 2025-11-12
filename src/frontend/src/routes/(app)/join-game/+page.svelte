@@ -67,7 +67,7 @@
   let selectedGameId = $state<string | null>(null);
   let selectedGame = $state<GameView | null>(null);
   let selectedDetail = $state<GameDetailData | null>(null);
-  let selectedTablaId = $state<number | null>(null);
+  let selectedTablaIds = $state<number[]>([]);
   let isFetchingDetail = $state(false);
   let isApproving = $state(false);
   let isJoining = $state(false);
@@ -109,10 +109,13 @@
   const currentTokenSymbol = $derived(currentTokenConfig?.symbol ?? null);
 
   const currentEntryFee = $derived.by(() => {
-    if (selectedDetail) return BigInt(selectedDetail.entryFee);
-    if (selectedGame) return BigInt(selectedGame.entryFee);
-    return 0n;
-  });
+  const baseFee = selectedDetail 
+    ? BigInt(selectedDetail.entryFee) 
+    : selectedGame 
+      ? BigInt(selectedGame.entryFee) 
+      : 0n;
+  return baseFee * BigInt(selectedTablaIds.length || 1);
+});
 
   const currentLedgerFee = $derived.by(() => {
     const symbol = currentTokenSymbol;
@@ -180,7 +183,7 @@
     selectedGameId = game.id;
     selectedGame = game;
     selectedDetail = null;
-    selectedTablaId = null;
+    selectedTablaIds = [];
     isFetchingDetail = true;
 
     try {
@@ -194,9 +197,8 @@
     }
   }
 
-  function handleTablaSelect(tablaId: number) {
-    selectedTablaId = tablaId;
-    console.log("🎴 Tabla selected:", tablaId);
+  function handleTablaSelect(tablaIds: number[], totalFee: bigint) {
+    console.log("🎴 Tablas selected:", tablaIds, "Total fee:", totalFee);
   }
 
   async function approveAndJoin() {
@@ -210,7 +212,7 @@
       return;
     }
 
-    if (!selectedTablaId) {
+    if (!selectedTablaIds) {
       addToast({
         message: "Select a tabla before joining.",
         type: "error",
@@ -307,10 +309,10 @@
   }
 
   async function joinSelectedGame(detail: GameDetailData) {
-    if (!selectedTablaId) return;
+    if (selectedTablaIds.length === 0) return;
 
     isJoining = true;
-    const result = await gameStore.joinGame(detail.id, selectedTablaId);
+    const result = await gameStore.joinGame(detail.id, selectedTablaIds);
 
     if (result.success) {
       addToast({
@@ -645,7 +647,8 @@
 
                 <div class="mt-6">
                   <TablaSelector
-                    bind:selectedTablaId
+                    gameId={selectedGame.id}
+                    bind:selectedTablaIds
                     onSelect={handleTablaSelect}
                   />
                 </div>
@@ -697,7 +700,7 @@
 
                 <button
                   class="w-full bg-[#F4E04D] text-[#1a0033] border-4 border-black px-4 py-3 font-black uppercase text-sm shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:bg-[#fff27d] disabled:bg-gray-500 disabled:text-gray-200"
-                  disabled={!selectedTablaId ||
+                  disabled={selectedTablaIds.length === 0 ||
                     isApproving ||
                     isJoining ||
                     !hasSufficientBalance}

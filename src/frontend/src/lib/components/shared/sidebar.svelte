@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { signOut } from "$lib/services/auth-services";
+  import SoundSettingsPopover from "$lib/components/sound/SoundSettingsPopover.svelte";
+
   import type { Profile } from "../../../../../declarations/backend/backend.did";
 
   interface Props {
@@ -15,7 +17,7 @@
     { path: "/dashboard", label: "Dashboard" },
     { path: "/join-game", label: "Join Game" },
     { path: "/host-game", label: "Host Game" },
-    { path: "/profile", label: "Profile" },
+    { path: "/profile", label: "Wallet" },
   ];
 
   async function handleSignOut() {
@@ -26,10 +28,6 @@
   function navigate(path: string) {
     toggleMenu();
     goto(path);
-  }
-
-  function formatWinRate(rate: number): string {
-    return `${(rate * 100).toFixed(1)}%`;
   }
 </script>
 

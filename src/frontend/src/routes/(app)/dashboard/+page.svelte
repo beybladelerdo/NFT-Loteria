@@ -105,10 +105,10 @@
             <div
               class="bg-[#C9B5E8] p-4 border-2 border-black text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <div class="text-xs font-bold text-[#1a0033] uppercase">Rate</div>
-              <div class="text-3xl font-black text-[#1a0033]">
-                {formatWinRate(profile.winRate)}
+              <div class="text-xs font-bold text-[#1a0033] uppercase">
+                Win Streak
               </div>
+              <div class="text-3xl font-black text-[#1a0033]">0</div>
             </div>
           </div>
 
@@ -116,7 +116,7 @@
             onclick={() => goto("/profile")}
             class="w-full bg-white text-[#1a0033] py-3 px-4 font-black uppercase border-4 border-black hover:bg-[#F4E04D] hover:scale-105 transition-all text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           >
-            VIEW PROFILE &gt;&gt;
+            WALLET &gt;&gt;
           </button>
         </div>
 

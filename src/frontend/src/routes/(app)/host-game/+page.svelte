@@ -9,21 +9,77 @@
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import InvitePlayers from "$lib/components/game/invite-player.svelte";
   import type { CreateGameParams } from "$lib/services/game-service";
+  import { formatSmart } from "$lib/utils/game-helper";
 
   const tokenService = new TokenService();
+  const maxPlayers = 100;
 
   let currentStep = $state<1 | 2 | 3>(1);
   let isLoading = $state(false);
   let isCreating = $state(false);
   let gameIdCreated = $state<string | null>(null);
 
-  // Form data
+  const MAX_DECIMALS = 8;
+
+  const DECIMALS: Record<"ICP" | "ckBTC" | "GLDT", number> = {
+    ICP: 8,
+    ckBTC: 8,
+    GLDT: 8,
+  };
+
+  const MIN_BY_TOKEN: Record<"ICP" | "ckBTC" | "GLDT", bigint> = {
+    ICP: 5_000_000n,
+    ckBTC: 1_000n,
+    GLDT: 100_000_000n,
+  };
+
+  function POW10(n: number) {
+    let x = 1n;
+    for (let i = 0; i < n; i++) x *= 10n;
+    return x;
+  }
+
+  function tokenDecimals() {
+    return DECIMALS[tokenType];
+  }
+
+  type ParseResult = { ok: true; units: bigint } | { ok: false; error: string };
+
+  function parseToUnits(input: string, decimals: number): ParseResult {
+    const t = input.trim();
+    if (!/^\d*(\.\d*)?$/.test(t) || t === "" || t === ".") {
+      return { ok: false, error: "Enter a valid amount" };
+    }
+    let [intPart = "0", fracPart = ""] = t.split(".");
+    if (fracPart.length > decimals) {
+      return { ok: false, error: `Max ${decimals} decimal places` };
+    }
+    const fracPadded = (fracPart + "0".repeat(decimals)).slice(0, decimals);
+    try {
+      const whole = BigInt(intPart || "0") * POW10(decimals);
+      const frac = BigInt(fracPadded || "0");
+      return { ok: true, units: whole + frac };
+    } catch {
+      return { ok: false, error: "Number too large" };
+    }
+  }
+
+  function onEntryFeeInput(e: Event) {
+    const el = e.target as HTMLInputElement;
+    const v = el.value;
+    const m = v.match(/^(\d*)(?:\.(\d*))?$/);
+    if (!m) return;
+    const [, i = "", f = ""] = m;
+    el.value = f.length > MAX_DECIMALS ? `${i}.${f.slice(0, MAX_DECIMALS)}` : v;
+    entryFeeInput = el.value;
+  }
+
   let gameName = $state("");
   let gameMode = $state<"Line" | "Blackout">("Line");
   let tokenType = $state<"ICP" | "ckBTC" | "GLDT">("ICP");
   let entryFeeInput = $state("");
   let hostFeePercent = $state(5);
-  // Derived balances
+
   let balances = $derived({
     ICP: $tokenStore.balances.find((b) => b.symbol === "ICP")
       ? parseFloat(
@@ -51,38 +107,16 @@
       : 0,
   });
 
-  // Validation
   let errors = $state({
     gameName: "",
     entryFee: "",
   });
-  function isCkBTC() {
-    return tokenType === "ckBTC";
-  }
-  function parseToE8s(s: string): bigint {
-    const t = s.trim();
-    const m = /^(\d+)(?:\.(\d{1,8})?)?$/.exec(t);
-    if (!m) throw new Error("ckBTC supports up to 8 decimal places");
-    const whole = m[1] ?? "0";
-    const frac = (m[2] ?? "").padEnd(8, "0");
-    return BigInt(whole) * 100000000n + BigInt(frac);
-  }
-  function parseWholeToBigInt(s: string): bigint {
-    const t = s.trim();
-    if (!/^\d+$/.test(t)) throw new Error("Entry fee must be a whole number");
-    return BigInt(t);
-  }
-  function readableEntryFee(): number {
-    if (entryFeeInput.trim() === "") return 0;
-    return isCkBTC() ? parseFloat(entryFeeInput) : parseInt(entryFeeInput, 10);
-  }
 
   onMount(async () => {
     if (!$authStore.isAuthenticated) {
       goto("/");
       return;
     }
-
     isLoading = true;
     await tokenStore.fetchBalances();
     isLoading = false;
@@ -101,47 +135,52 @@
 
   function validateStep1(): boolean {
     errors.gameName = "";
-
     if (!gameName.trim()) {
       errors.gameName = "Game name is required";
       return false;
     }
-
     if (gameName.trim().length < 3) {
       errors.gameName = "Game name must be at least 3 characters";
       return false;
     }
-
     if (gameName.trim().length > 50) {
       errors.gameName = "Game name must be less than 50 characters";
       return false;
     }
-
     return true;
   }
 
   function validateStep2(): boolean {
     errors.entryFee = "";
-
-    if (entryFeeInput.trim() === "") {
+    const v = entryFeeInput.trim();
+    if (v === "") {
       errors.entryFee = "Entry fee is required";
       return false;
     }
-
-    try {
-      if (isCkBTC()) {
-        const ok = /^(\d+)(\.(\d{1,8})?)?$/.test(entryFeeInput.trim());
-        if (!ok) throw new Error("ckBTC supports up to 8 decimal places");
-      } else {
-        if (!/^\d+$/.test(entryFeeInput.trim())) {
-          throw new Error("Entry fee must be a whole number");
-        }
-      }
-    } catch (e: any) {
-      errors.entryFee = e?.message ?? "Invalid entry fee";
+    const ok = /^\d*(?:\.\d{0,8})?$/.test(v) && v !== "." && v !== "";
+    if (!ok) {
+      errors.entryFee = "Use a number with up to 8 decimals";
       return false;
     }
-
+    if (Number(v) <= 0) {
+      errors.entryFee = "Amount must be greater than 0";
+      return false;
+    }
+    const parsed = parseToUnits(v, tokenDecimals());
+    if (!parsed.ok) {
+      errors.entryFee = parsed.error;
+      return false;
+    }
+    const min = MIN_BY_TOKEN[tokenType];
+    if (parsed.units < min) {
+      errors.entryFee =
+        tokenType === "ICP"
+          ? "Minimum is 0.05 ICP"
+          : tokenType === "ckBTC"
+            ? "Minimum is 0.00001000 ckBTC"
+            : "Minimum is 1.00000000 GLDT";
+      return false;
+    }
     return true;
   }
 
@@ -154,7 +193,6 @@
       });
       return;
     }
-
     if (currentStep === 2 && !validateStep2()) {
       addToast({
         message: errors.entryFee || "Please fix validation errors",
@@ -163,7 +201,6 @@
       });
       return;
     }
-
     if (currentStep < 3) {
       currentStep = (currentStep + 1) as 1 | 2 | 3;
     }
@@ -175,8 +212,12 @@
     }
   }
 
+  function readableEntryFee(): number {
+    if (entryFeeInput.trim() === "") return 0;
+    return Number(entryFeeInput);
+  }
+
   function calculatePrizePool(): number {
-    const maxPlayers = 8;
     const totalEntry = readableEntryFee() * maxPlayers;
     const hostFee = (totalEntry * hostFeePercent) / 100;
     return totalEntry - hostFee;
@@ -194,17 +235,25 @@
       });
       return;
     }
-    let entryFeeParam: bigint;
-    try {
-      entryFeeParam = isCkBTC()
-        ? parseToE8s(entryFeeInput)
-        : parseWholeToBigInt(entryFeeInput);
-    } catch (e: any) {
+    const parsed = parseToUnits(entryFeeInput, tokenDecimals());
+    if (!parsed.ok) {
       addToast({
-        message: e?.message ?? "Invalid entry fee",
+        message: parsed.error,
         type: "error",
         duration: 3000,
       });
+      return;
+    }
+    const min = MIN_BY_TOKEN[tokenType];
+    if (parsed.units < min) {
+      const msg =
+        tokenType === "ICP"
+          ? "Minimum is 0.05 ICP"
+          : tokenType === "ckBTC"
+            ? "Minimum is 0.00001000 ckBTC"
+            : "Minimum is 1.00000000 GLDT";
+      addToast({ message: msg, type: "error", duration: 3000 });
+      errors.entryFee = msg;
       return;
     }
     isCreating = true;
@@ -213,27 +262,21 @@
       name: gameName.trim(),
       mode: gameMode,
       tokenType,
-      entryFee: Number(entryFeeParam as unknown as bigint), // keep field name; no API change
+      entryFee: Number(parsed.units as unknown as bigint),
       hostFeePercent,
     };
 
     try {
-      // Create game
       const createResult = await gameStore.createGame(params);
-
       if (!createResult.success || !createResult.gameId) {
         throw new Error(createResult.error || "Failed to create game");
       }
-
       gameIdCreated = createResult.gameId;
-
       addToast({
         message: "Game created successfully!",
         type: "success",
         duration: 3000,
       });
-
-      // Redirect to host lobby
       goto(`/game/host/${createResult.gameId}`);
     } catch (error: any) {
       console.error("Create game error:", error);
@@ -259,7 +302,6 @@
 {:else}
   <div class="min-h-screen bg-[#1a0033] relative overflow-hidden">
     <div class="relative z-10 max-w-4xl mx-auto px-4 py-8 md:py-12">
-      <!-- Header -->
       <div class="mb-8 text-center">
         <h1
           class="text-4xl md:text-5xl font-black uppercase mb-2"
@@ -267,8 +309,6 @@
         >
           <span class="text-[#F4E04D]">HOST NEW GAME</span>
         </h1>
-
-        <!-- Progress Steps -->
         <div class="flex items-center justify-center gap-2 md:gap-4 mt-6">
           {#each [1, 2, 3] as step}
             <div class="flex items-center gap-2">
@@ -295,7 +335,6 @@
         </div>
       </div>
 
-      <!-- User Balance Display -->
       <div
         class="bg-[#1a0033] border-4 border-[#C9B5E8] p-4 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
       >
@@ -316,7 +355,7 @@
             class="bg-[#F4E04D] border-2 border-black p-2 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             <p class="text-[#1a0033] font-black text-lg md:text-xl">
-              {balances.ICP.toFixed(2)}
+              {formatSmart(balances.ICP)}
             </p>
             <p class="text-[#1a0033] font-bold text-xs">ICP</p>
           </div>
@@ -324,7 +363,7 @@
             class="bg-[#C9B5E8] border-2 border-black p-2 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             <p class="text-[#1a0033] font-black text-lg md:text-xl">
-              {balances.ckBTC.toFixed(4)}
+              {formatSmart(balances.ckBTC)}
             </p>
             <p class="text-[#1a0033] font-bold text-xs">ckBTC</p>
           </div>
@@ -332,14 +371,13 @@
             class="bg-white border-2 border-black p-2 text-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             <p class="text-[#1a0033] font-black text-lg md:text-xl">
-              {balances.GLDT.toFixed(2)}
+              {formatSmart(balances.GLDT)}
             </p>
             <p class="text-[#1a0033] font-bold text-xs">GLDT</p>
           </div>
         </div>
       </div>
 
-      <!-- Step Content -->
       <div
         class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)] mb-6"
       >
@@ -359,7 +397,6 @@
             GAME SETUP
           </h2>
 
-          <!-- Game Name -->
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-2">
@@ -384,7 +421,6 @@
             </p>
           </div>
 
-          <!-- Game Mode -->
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-3">
@@ -416,7 +452,6 @@
           </div>
         {/if}
 
-        <!-- Step 2: Rules & Fees -->
         {#if currentStep === 2}
           <div class="mb-4">
             <span
@@ -433,7 +468,6 @@
             GAME RULES
           </h2>
 
-          <!-- Token Type -->
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-3">
@@ -467,19 +501,17 @@
             </div>
           </div>
 
-          <!-- Entry Fee -->
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-2">
-              ENTRY FEE ({isCkBTC()
-                ? "Up to 8 decimals"
-                : "Whole " + tokenType + " only"}):
+              ENTRY FEE (up to 8 decimals):
             </label>
             <input
               type="text"
               bind:value={entryFeeInput}
               inputmode="decimal"
-              placeholder={isCkBTC() ? "0.00000000" : "0"}
+              placeholder="0.00000000"
+              oninput={onEntryFeeInput}
               class="w-full px-4 py-3 border-4 border-black bg-white text-[#1a0033] font-black text-2xl text-center focus:outline-none focus:border-[#F4E04D] shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] {errors.entryFee
                 ? 'border-[#FF6EC7]'
                 : ''}"
@@ -490,12 +522,11 @@
               </p>
             {/if}
             <p class="mt-2 text-[#C9B5E8] text-xs font-bold text-center">
-              Your balance: {balances[tokenType].toFixed(isCkBTC() ? 8 : 2)}
+              Your balance: {formatSmart(balances[tokenType])}
               {tokenType}
             </p>
           </div>
 
-          <!-- Host Fee Percentage -->
           <div class="mb-6">
             <!-- svelte-ignore a11y_label_has_associated_control -->
             <label class="block text-sm font-black text-white uppercase mb-2">
@@ -515,17 +546,15 @@
             </div>
           </div>
 
-          <!-- Max Players Info -->
           <div
             class="bg-[#F4E04D] border-2 border-black p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           >
             <p class="text-[#1a0033] font-bold text-xs uppercase text-center">
-              MAX PLAYERS: 8
+              MAX PLAYERS: {maxPlayers}
             </p>
           </div>
         {/if}
 
-        <!-- Step 3: Review -->
         {#if currentStep === 3}
           <div class="mb-4">
             <span
@@ -544,8 +573,9 @@
                   >Entry Fee:</span
                 >
                 <span class="text-[#C9B5E8] font-black text-sm">
-                  {readableEntryFee()} {tokenType}</span
-                >
+                  {formatSmart(readableEntryFee())}
+                  {tokenType}
+                </span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-white font-bold text-xs uppercase"
@@ -562,7 +592,7 @@
                   >Estimated Prize Pool (Max Players):</span
                 >
                 <span class="text-white font-black text-sm">
-                  {calculatePrizePool().toFixed(2)}
+                  {formatSmart(calculatePrizePool())}
                   {tokenType}
                 </span>
               </div>
@@ -586,7 +616,6 @@
         {/if}
       </div>
 
-      <!-- Navigation Buttons -->
       <div class="flex justify-between gap-4">
         {#if currentStep > 1}
           <button

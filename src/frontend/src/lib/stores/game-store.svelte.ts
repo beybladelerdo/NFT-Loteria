@@ -7,6 +7,7 @@ import type {
 import type {
   CreateGameParams,
   CreateTablaParams,
+  PrincipalEntry,
 } from "$lib/services/game-service";
 
 export interface GameStoreData {
@@ -106,7 +107,7 @@ export const gameStore = {
     }
   },
 
-  async joinGame(gameId: string, rentedTablaId: number) {
+  async joinGame(gameId: string, rentedTablaId: number[]) {
     isLoading = true;
     try {
       const result = await new GameService().joinGame(gameId, rentedTablaId);
@@ -291,4 +292,28 @@ export const gameStore = {
       return { success: false, error: error?.message ?? String(error) };
     }
   },
+  async upsertOwners(pairs: PrincipalEntry) {
+    try {
+      const result = await new GameService().upsertOwners(pairs);
+      return result;
+    } catch (error: any) {
+      console.error("Error upserting principal registry:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async getAvailableTablasForGame(gameId: string) {
+  isLoading = true;
+  try {
+    const result = await new GameService().getAvailableTablasForGame(gameId);
+    if (result.success) {
+      return { success: true, tablas: result.tablas };
+    }
+    return { success: false, error: result.error };
+  } catch (error: any) {
+    console.error("Error fetching available tablas for game:", error);
+    return { success: false, error: error?.message ?? String(error) };
+  } finally {
+    isLoading = false;
+  }
+}
 };

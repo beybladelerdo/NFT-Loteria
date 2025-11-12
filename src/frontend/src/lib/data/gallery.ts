@@ -9,7 +9,7 @@ const tablaMods = import.meta.glob("$lib/assets/Tablas/tabla_*.jpg", {
 
 // extract trailing number for sorting
 function idFromPath(p: string): number {
-  const m = p.match(/(?:character|tabla)_(\d+)\.jpg$/i);
+  const m = p.match(/(?:character|tabla)_(\d+)\.(jpg|png)$/i);
   return m ? Number(m[1]) : -1;
 }
 

@@ -4,20 +4,94 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
 
-    <title>NFT Loteria</title>
-    <link href="https://btcbingo.fun" rel="canonical" />
-    <meta content="NFT Loteria" name="description" />
-    <meta content="NFT Loteria" property="og:title" />
-    <meta content="NFT Loteria" property="og:description" />
-    <meta content="website" property="og:type" />
-    <meta content="https://btcbingo.fun" property="og:url" />
-    <meta content="https://btcbingo.fun/meta-share.jpg" property="og:image" />
-    <meta content="summary_large_image" name="twitter:card" />
-    <meta content="NFT Loteria" name="twitter:title" />
-    <meta content="NFT Loteria" name="twitter:description" />
-    <meta content="https://btcbingo.fun/meta-share.jpg" name="twitter:image" />
-    <meta content="@ICPLoteria" name="twitter:creator" />
+    <!-- Primary Meta Tags -->
+    <title>
+      NFT Loteria - Play Bingo on Internet Computer | Get paid by owning with
+      NFT Cards
+    </title>
+    <meta
+      name="title"
+      content="NFT Loteria - Play Blockchain Lotería on Internet Computer"
+    />
+    <meta
+      name="description"
+      content="Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain. Rent tablas, compete for prizes, and win with provably fair gaming. Join the decentralized gaming revolution!"
+    />
+    <meta
+      name="keywords"
+      content="NFT Loteria, blockchain gaming, Internet Computer, ICP, NFT cards, crypto gaming, Mexican loteria, decentralized gaming, blockchain lottery"
+    />
+    <meta name="author" content="Canister Software Inc" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
 
+    <!-- Canonical URL -->
+    <link href="https://btcbingo.fun" rel="canonical" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://btcbingo.fun" />
+    <meta
+      property="og:title"
+      content="NFT Loteria - Play Blockchain Lotería on Internet Computer"
+    />
+    <meta
+      property="og:description"
+      content="Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain. Rent tablas, compete for prizes, and win with provably fair gaming."
+    />
+    <meta property="og:image" content="https://btcbingo.fun/meta-share.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="NFT Loteria" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://btcbingo.fun" />
+    <meta
+      name="twitter:title"
+      content="NFT Loteria - Play Blockchain Lotería on Internet Computer"
+    />
+    <meta
+      name="twitter:description"
+      content="Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain. Rent tablas, compete for prizes, and win with provably fair gaming."
+    />
+    <meta name="twitter:image" content="https://btcbingo.fun/meta-share.jpg" />
+    <meta name="twitter:creator" content="@ICPLoteria" />
+    <meta name="twitter:site" content="@ICPLoteria" />
+
+    <!-- Structured Data / Schema.org -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "NFT Loteria",
+        "description": "Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain",
+        "url": "https://btcbingo.fun",
+        "applicationCategory": "Game",
+        "operatingSystem": "Web Browser",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Organization",
+          "name": "Canister Software Inc"
+        },
+        "provider": {
+          "@type": "Organization",
+          "name": "Internet Computer Protocol",
+          "url": "https://internetcomputer.org"
+        },
+        "image": "https://btcbingo.fun/meta-share.jpg",
+        "gamePlatform": "Internet Computer Blockchain"
+      }
+    </script>
+
+    <!-- PWA Manifest -->
     <link crossorigin="anonymous" href="/manifest.webmanifest" rel="manifest" />
 
     <!-- Favicon -->
@@ -38,12 +112,15 @@
       href="%sveltekit.assets%/favicons/apple-touch-icon.png"
     />
     <link rel="manifest" href="%sveltekit.assets%/favicons/site.webmanifest" />
-
     <link rel="shortcut icon" href="%sveltekit.assets%/favicons/favicon.ico" />
 
     <!-- iOS meta tags & icons -->
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="#ED1E79" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="NFT Loteria" />
     <link
       rel="apple-touch-icon"
@@ -58,12 +135,28 @@
     <!-- MS -->
     <meta name="msapplication-TileColor" content="#ED1E79" />
     <meta
+      name="msapplication-TileImage"
+      content="%sveltekit.assets%/favicons/mstile-150x150.png"
+    />
+    <meta
       name="msapplication-config"
       content="%sveltekit.assets%/favicons/browserconfig.xml"
     />
 
-    <meta content="#ED1E79" name="theme-color" />
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#1a0033" />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: dark)"
+      content="#1a0033"
+    />
+    <meta
+      name="theme-color"
+      media="(prefers-color-scheme: light)"
+      content="#1a0033"
+    />
 
+    <!-- Preload Critical Resources -->
     <link
       rel="preload"
       href="%sveltekit.assets%/AmigaNormal.woff2"
@@ -71,6 +164,9 @@
       type="font/woff2"
       crossorigin="anonymous"
     />
+
+    <!-- Security Headers -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 
     %sveltekit.head%
 
@@ -80,7 +176,6 @@
         height: 100%;
         margin: 0;
       }
-
       body {
         font-family: amiga !important;
         color: white !important;
@@ -88,7 +183,6 @@
         height: 100vh;
         margin: 0;
       }
-
       @font-face {
         font-family: "Amiga";
         src: url("%sveltekit.assets%/AmigaNormal.woff2") format("woff2");

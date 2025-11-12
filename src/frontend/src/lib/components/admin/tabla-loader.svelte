@@ -3,7 +3,7 @@
   import type { CreateTablaParams } from "$lib/services/game-service";
   import tablaMetadata from "$lib/assets/Layouts/tabla_metadata.json";
 
-  const CHUNK_SIZE = 50; // Process 50 tablas at a time
+  const CHUNK_SIZE = 50;
   const FRONTEND_CANISTER_ID = import.meta.env.VITE_FRONTEND_CANISTER_ID ?? "";
 
   let isLoading = $state(false);
@@ -27,32 +27,26 @@
   }
 
   function parseCharacterPosition(posKey: string): number {
-    // "position_1" -> 1, "position_16" -> 16
     const match = posKey.match(/position_(\d+)/);
     return match ? parseInt(match[1]) : 0;
   }
 
   function parseCharacterId(charStr: string): number {
-    // "Character_3.png" -> 3
     const match = charStr.match(/Character_(\d+)/);
     return match ? parseInt(match[1]) : 0;
   }
 
   function generateImageUrl(fileName: string): string {
-    // Extract tabla number from filename (e.g., "0001.jpg" -> "1")
     const match = fileName.match(/(\d+)/);
     const tablaNum = match ? parseInt(match[1]) : 0;
 
-    // Return path to asset in frontend canister
-    // Format: https://{canister-id}.icp0.io/assets/tabla_{num}.png
-    return `https://${FRONTEND_CANISTER_ID}.icp0.io/assets/Tablas/tabla_${tablaNum}.png`;
+    return `https://${FRONTEND_CANISTER_ID}.icp0.io/assets/Tablas/tabla_${tablaNum}.jpg`;
   }
 
   function parseTablaJson(jsonArray: TablaJSON[]): CreateTablaParams[] {
     const tablas: CreateTablaParams[] = [];
 
     for (const item of jsonArray) {
-      // Sort positions 1-16 and extract card IDs
       const positions = Object.entries(item.characters)
         .map(([key, value]) => ({
           position: parseCharacterPosition(key),
@@ -61,7 +55,6 @@
         .sort((a, b) => a.position - b.position)
         .map((p) => p.cardId);
 
-      // Validate we have exactly 16 cards
       if (positions.length !== 16) {
         console.warn(
           `Tabla ${item.tabla_number} has ${positions.length} cards, expected 16`,

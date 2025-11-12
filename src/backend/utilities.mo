@@ -7,6 +7,7 @@ import Queries "queries";
 import List "mo:core/List";
 import VarArray "mo:core/VarArray";
 import Array "mo:core/Array";
+import Constants "constants";
 
 module Utilities {
 
@@ -130,7 +131,7 @@ module Utilities {
     entryFee = g.entryFee;
     hostFeePercent = g.hostFeePercent;
     playerCount = g.players.size();
-    maxPlayers = 50;
+    maxPlayers = Constants.MAX_PLAYERS_PER_GAME;
     drawnCardCount = g.drawnCards.size();
     currentCard = g.currentCard;
     winner = g.winner;

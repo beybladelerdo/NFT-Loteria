@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { addToast } from "$lib/stores/toasts-store";
   import { authStore } from "$lib/stores/auth-store";
@@ -9,72 +9,25 @@
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import FlickeringGrid from "$lib/components/landing/FlickeringGrid.svelte";
   import { cardImages } from "$lib/data/gallery";
-  import type { GameService } from "$lib/services/game-service";
   import { TokenService } from "$lib/services/token-service";
+  import {
+    type GameDetailData,
+    shortPrincipal,
+    formatSmart,
+    modeLabel,
+    statusLabel,
+    tokenSymbol,
+    profileName,
+    playerName,
+    TOTAL_CARDS,
+    REFRESH_INTERVAL,
+  } from "$lib/utils/game-helper";
+  import AudioToggle from "$lib/components/sound/SoundToggle.svelte";
+  import { startMenuMusic } from "$lib/services/audio-services";
+  import CardDrawAnimation from "$lib/components/shared/DrawAnimation.svelte";
 
   const tokenService = new TokenService();
-
-  type GameDetailData = NonNullable<
-    Awaited<ReturnType<GameService["getGameDetail"]>>
-  >;
-  type PlayerSummary = GameDetailData["players"][number];
-
-
-  const REFRESH_INTERVAL = 5000;
-  const TOTAL_CARDS = 54;
-
-  const gameId = $derived($page.params.gameId);
-
-  const unwrapOpt = <T,>(opt: [] | [T]): T | null =>
-    opt.length ? opt[0] : null;
-
-  const shortPrincipal = (text: string) =>
-    text.length > 9 ? `${text.slice(0, 5)}…${text.slice(-4)}` : text;
-
-  const modeLabel = (mode?: GameDetailData["mode"]) => {
-    if (!mode) return "Unknown";
-    if ("line" in mode) return "Line";
-    if ("blackout" in mode) return "Blackout";
-    return "Unknown";
-  };
-
-  const statusLabel = (status?: GameDetailData["status"]) => {
-    if (!status) return "Unknown";
-    if ("lobby" in status) return "Lobby";
-    if ("active" in status) return "Active";
-    if ("completed" in status) return "Completed";
-    return "Unknown";
-  };
-
-  const tokenSymbol = (token?: GameDetailData["tokenType"]) => {
-    if (!token) return "-";
-    if ("ICP" in token) return "ICP";
-    if ("ckBTC" in token) return "ckBTC";
-    if ("gldt" in token) return "GLDT";
-    return "-";
-  };
-
-  const tokenDecimals = (token?: GameDetailData["tokenType"]) => {
-    if (!token) return 8;
-    if ("ICP" in token) return 8;
-    if ("ckBTC" in token) return 8;
-    if ("gldt" in token) return 8;
-    return 8;
-  };
-
-  const formatAmount = (
-    amount: bigint,
-    token?: GameDetailData["tokenType"],
-  ) => {
-    const decimals = tokenDecimals(token);
-    const divisor = 10 ** decimals;
-    const value = Number(amount) / divisor;
-    if (Number.isNaN(value)) return amount.toString();
-    return value.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    });
-  };
+  const gameId = page.params.gameId ?? null;
 
   const cardImage = (cardId: number | null) => {
     if (!cardId) return "/cards/placeholder.png";
@@ -82,17 +35,6 @@
       cardImages[cardId - 1] ??
       (cardImages.length > 0 ? cardImages[cardImages.length - 1] : "")
     );
-  };
-
-  const profileName = (profile?: GameDetailData["host"]) => {
-    if (!profile) return "Unknown";
-    const username = unwrapOpt(profile.username);
-    return username ?? shortPrincipal(profile.principal.toText());
-  };
-
-  const playerName = (player: PlayerSummary) => {
-    const username = unwrapOpt(player.username);
-    return username ?? shortPrincipal(player.principal.toText());
   };
 
   let gameDetail = $state<GameDetailData | null>(null);
@@ -104,31 +46,34 @@
   let inviteLink = $state("");
   let errorMessage = $state("");
   let lastDrawnCardId = $state<number | null>(null);
-    let potBalance = $state<bigint | null>(null);
+  let showCardAnimation = $state(false);
+  let potBalance = $state<bigint | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
 
-     $effect(() => {
+  $effect(() => {
     if (!gameDetail?.id || !$authStore.identity) return;
-    
+
     tokenService
       .getPotBalance(gameDetail.id, gameDetail.tokenType, $authStore.identity)
       .then((result) => {
         potBalance = result.amountBaseUnits;
       })
       .catch((error) => {
-        console.error('Failed to load pot balance:', error);
+        console.error("Failed to load pot balance:", error);
         potBalance = null;
       });
   });
-  
-  const formattedPotBalance = $derived(
-    potBalance !== null 
-      ? tokenService.formatBalance(potBalance, 8) 
-      : '—'
-  );
 
+  const formattedPotBalance = $derived(
+    potBalance !== null ? tokenService.formatBalance(potBalance, 8) : "—",
+  );
+  const isLobbyStatus = $derived(!!gameDetail && "lobby" in gameDetail.status);
   const viewerPrincipal = $derived(
     $authStore.identity ? $authStore.identity.getPrincipal().toText() : null,
+  );
+  const isGameActive = $derived(!!gameDetail && "active" in gameDetail.status);
+  const isGameCompleted = $derived(
+    !!gameDetail && "completed" in gameDetail.status,
   );
 
   const isHostViewer = $derived(
@@ -159,27 +104,25 @@
     return map;
   });
 
-const playersStats = $derived(
-  (() => {
-    if (!gameDetail) return [];
-    return [...gameDetail.players]
-      .sort((a, b) => playerName(a).localeCompare(playerName(b)))
-      .map((player) => {
-        const id = player.principal.toText();
-        return {
-          player,
-          marks: marksByPlayer.get(id) ?? 0,
-          tablas: player.tablas.length,
-        };
-      });
-  })()
-);
-
-  const winnerPrincipal = $derived(
-    gameDetail?.winner?.[0]?.toText() ?? null,
+  const playersStats = $derived(
+    (() => {
+      if (!gameDetail) return [];
+      return [...gameDetail.players]
+        .sort((a, b) => playerName(a).localeCompare(playerName(b)))
+        .map((player) => {
+          const id = player.principal.toText();
+          return {
+            player,
+            marks: marksByPlayer.get(id) ?? 0,
+            tablas: player.tablas.length,
+          };
+        });
+    })(),
   );
 
-  const winnerLabel = $derived(() => {
+  const winnerPrincipal = $derived(gameDetail?.winner?.[0]?.toText() ?? null);
+
+  const winnerLabel = $derived.by(() => {
     if (!gameDetail || !winnerPrincipal) return null;
     if (gameDetail.host.principal.toText() === winnerPrincipal) {
       return profileName(gameDetail.host);
@@ -188,6 +131,42 @@ const playersStats = $derived(
       (p) => p.principal.toText() === winnerPrincipal,
     );
     return match ? playerName(match) : shortPrincipal(winnerPrincipal);
+  });
+  function handleCloseAnimation() {
+    showCardAnimation = false;
+  }
+
+  // Enhanced polling when game completes but winner not yet set
+  // This handles the race condition where status changes to completed but winner field hasn't propagated
+  let fastPollHandle: ReturnType<typeof setInterval> | null = null;
+
+  $effect(() => {
+    // If game is completed but no winner yet, poll aggressively
+    if (isGameCompleted && !winnerPrincipal) {
+      if (!fastPollHandle) {
+        console.log("Game completed but no winner yet - starting fast polling");
+        let attempts = 0;
+        fastPollHandle = setInterval(async () => {
+          attempts++;
+          await refreshGame(false);
+
+          // Stop after 20 attempts (10 seconds) or when winner is found
+          if (attempts >= 20 || winnerPrincipal) {
+            if (fastPollHandle) {
+              clearInterval(fastPollHandle);
+              fastPollHandle = null;
+              console.log(
+                winnerPrincipal ? "Winner found!" : "Fast polling timeout",
+              );
+            }
+          }
+        }, 500); // Check every 500ms
+      }
+    } else if (fastPollHandle && (winnerPrincipal || !isGameCompleted)) {
+      // Clean up fast polling if winner found or game no longer completed
+      clearInterval(fastPollHandle);
+      fastPollHandle = null;
+    }
   });
 
   async function refreshGame(showSpinner = false) {
@@ -239,17 +218,20 @@ const playersStats = $derived(
   }
 
   async function handleDrawCard() {
-    if (!isHostViewer || !gameId) return;
+    if (!gameId || !isGameActive || isDrawing) return;
+
     isDrawing = true;
     const result = await gameStore.drawCard(gameId);
+
     if (result.success) {
-      const cardId = result.cardId;
+      await refreshGame(false);
+      showCardAnimation = true;
+
       addToast({
-        message: cardId ? `Drew card #${cardId}!` : "Card drawn successfully.",
+        message: "Card drawn!",
         type: "success",
         duration: 2000,
       });
-      await refreshGame(true);
     } else {
       addToast({
         message: result.error ?? "Failed to draw card.",
@@ -257,6 +239,7 @@ const playersStats = $derived(
         duration: 3000,
       });
     }
+
     isDrawing = false;
   }
 
@@ -282,6 +265,7 @@ const playersStats = $derived(
   }
 
   onMount(() => {
+    startMenuMusic("/sounds/menu_music.wav", true);
     (async () => {
       try {
         await authStore.sync();
@@ -300,9 +284,18 @@ const playersStats = $derived(
 
   onDestroy(() => {
     if (pollHandle) clearInterval(pollHandle);
+    if (fastPollHandle) clearInterval(fastPollHandle);
   });
 </script>
 
+<CardDrawAnimation
+  cardId={currentCardId}
+  cardImage={currentCardId ? cardImage(currentCardId) : ""}
+  show={showCardAnimation}
+  isHost={isHostViewer}
+  hasCardOnTabla={false}
+  onClose={handleCloseAnimation}
+/>
 {#if isLoading}
   <div class="flex items-center justify-center min-h-screen bg-[#1a0033]">
     <Spinner />
@@ -407,7 +400,7 @@ const playersStats = $derived(
               <div class="flex justify-between gap-4">
                 <span class="text-[#C9B5E8]">Entry Fee</span>
                 <span class="text-right">
-                                    {tokenService.formatBalance(gameDetail.entryFee, 8)}
+                  {tokenService.formatBalance(gameDetail.entryFee, 8)}
                   &nbsp;{tokenSymbol(gameDetail.tokenType)}
                 </span>
               </div>
@@ -422,12 +415,16 @@ const playersStats = $derived(
                   &nbsp;{tokenSymbol(gameDetail.tokenType)}
                 </span>
               </div>
-              {#if winnerLabel()}
-                <div class="flex justify-between gap-4">
-                  <span class="text-[#C9B5E8]">Winner</span>
-                  <span class="text-right text-[#F4E04D]">{winnerLabel()}</span>
-                </div>
-              {/if}
+              <div class="flex justify-between gap-4">
+                <span class="text-[#C9B5E8]">Winner</span>
+                <span class="text-right text-[#F4E04D]">
+                  {#if winnerLabel}
+                    {winnerLabel}
+                  {:else}
+                    TBD
+                  {/if}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -477,65 +474,67 @@ const playersStats = $derived(
           </div>
 
           {#if isHostViewer}
-            <div
-              class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,0.8)]"
-            >
-              <div class="mb-4">
-                <span
-                  class="bg-white text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-                >
-                  Invite Players
-                </span>
-              </div>
-              <p
-                class="text-xs font-bold text-white uppercase mb-4 leading-relaxed"
-              >
-                Share your invite link below or use the quick invite tool to
-                search by username. Inviting players is optional—you can always
-                come back later once the lobby is ready.
-              </p>
+            {#if isLobbyStatus}
               <div
-                class="bg-[#1a0033] border-2 border-black px-3 py-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] space-y-3"
+                class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,0.8)]"
               >
-                <div class="flex items-center gap-2">
-                  <input
-                    class="flex-1 bg-[#1a0033] border-2 border-black text-white text-xs font-mono px-2 py-2"
-                    readonly
-                    value={inviteLink}
-                  />
-                  <button
-                    class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-2 font-black uppercase text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:bg-[#fff27d]"
-                    onclick={() => {
-                      navigator.clipboard.writeText(inviteLink);
-                      addToast({
-                        message: "Invite link copied!",
-                        type: "success",
-                        duration: 2000,
-                      });
-                    }}
+                <div class="mb-4">
+                  <span
+                    class="bg-white text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                   >
-                    Copy
-                  </button>
+                    Invite Players
+                  </span>
                 </div>
-                <button
-                  class="w-full bg-[#C9B5E8] text-[#1a0033] border-2 border-black px-3 py-2 font-black uppercase text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:bg-[#d9c9f0]"
-                  onclick={() => (showInvitePanel = !showInvitePanel)}
+                <p
+                  class="text-xs font-bold text-white uppercase mb-4 leading-relaxed"
                 >
-                  {showInvitePanel
-                    ? "Hide Invite Helper"
-                    : "Open Invite Helper"}
-                </button>
-
-                {#if showInvitePanel}
-                  <div class="pt-3 border-t border-[#C9B5E8]">
-                    <InvitePlayers
-                      gameId={gameDetail.id}
-                      gameLink={inviteLink}
+                  Share your invite link below or use the quick invite tool to
+                  search by username. Inviting players is optional—you can
+                  always come back later once the lobby is ready.
+                </p>
+                <div
+                  class="bg-[#1a0033] border-2 border-black px-3 py-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] space-y-3"
+                >
+                  <div class="flex items-center gap-2">
+                    <input
+                      class="flex-1 bg-[#1a0033] border-2 border-black text-white text-xs font-mono px-2 py-2"
+                      readonly
+                      value={inviteLink}
                     />
+                    <button
+                      class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-2 font-black uppercase text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:bg-[#fff27d]"
+                      onclick={() => {
+                        navigator.clipboard.writeText(inviteLink);
+                        addToast({
+                          message: "Invite link copied!",
+                          type: "success",
+                          duration: 2000,
+                        });
+                      }}
+                    >
+                      Copy
+                    </button>
                   </div>
-                {/if}
+                  <button
+                    class="w-full bg-[#C9B5E8] text-[#1a0033] border-2 border-black px-3 py-2 font-black uppercase text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:bg-[#d9c9f0]"
+                    onclick={() => (showInvitePanel = !showInvitePanel)}
+                  >
+                    {showInvitePanel
+                      ? "Hide Invite Helper"
+                      : "Open Invite Helper"}
+                  </button>
+
+                  {#if showInvitePanel}
+                    <div class="pt-3 border-t border-[#C9B5E8]">
+                      <InvitePlayers
+                        gameId={gameDetail.id}
+                        gameLink={inviteLink}
+                      />
+                    </div>
+                  {/if}
+                </div>
               </div>
-            </div>
+            {/if}
           {/if}
         </div>
 
@@ -602,6 +601,7 @@ const playersStats = $derived(
                 >
                   Refresh
                 </button>
+                <AudioToggle />
               </div>
             </div>
 
@@ -609,7 +609,7 @@ const playersStats = $derived(
               <div
                 class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-4 py-3 font-black uppercase text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)]"
               >
-                🏆 Winner: {winnerLabel()}
+                🏆 Winner: {winnerLabel}
               </div>
             {/if}
 
@@ -617,27 +617,34 @@ const playersStats = $derived(
               class="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-4 items-start"
             >
               <div
-                class="bg-[#1a0033] border-4 border-black p-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center aspect-square"
+                class="bg-[#1a0033] border-4 border-black p-3 shadow-[4px_4px_0_rgba(0,0,0,1)] flex flex-col items-center gap-2"
               >
                 {#if currentCardId}
-                  <img
-                    src={cardImage(currentCardId)}
-                    alt={`Current card ${currentCardId}`}
-                    class="w-full h-full object-cover border-2 border-[#F4E04D]"
-                  />
-                  <span
-                    class="mt-2 text-xs font-black text-[#F4E04D] uppercase"
+                  <div
+                    class="relative w-full overflow-hidden rounded-sm border-2 border-[#F4E04D] bg-[#0f0220]"
+                    style="aspect-ratio:320/500;"
                   >
+                    <img
+                      src={cardImage(currentCardId)}
+                      alt={`Current card ${currentCardId}`}
+                      class="absolute inset-0 w-full h-full object-contain"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+
+                  <span class="text-xs font-black text-[#F4E04D] uppercase">
                     Current Card #{currentCardId}
                   </span>
                 {:else}
                   <div
-                    class="text-center text-[#C9B5E8] font-bold text-xs uppercase"
+                    class="text-center text-[#C9B5E8] font-bold text-xs uppercase py-8"
                   >
                     Waiting for first draw...
                   </div>
                 {/if}
               </div>
+
               <div
                 class="bg-[#1a0033] border-2 border-black px-4 py-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] text-white space-y-2"
               >
@@ -651,7 +658,7 @@ const playersStats = $derived(
                 {/if}
                 <p class="text-xs font-bold uppercase">
                   Prize Pool:{" "}
-                  {formatAmount(gameDetail.prizePool, gameDetail.tokenType)}
+                  {formattedPotBalance}
                   &nbsp;{tokenSymbol(gameDetail.tokenType)}
                 </p>
                 <p class="text-xs font-bold uppercase">
@@ -682,23 +689,24 @@ const playersStats = $derived(
               </div>
             {:else}
               <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                {#each drawnCards as cardId}
+                {#each drawnCards as id}
                   <div
-                    class="relative bg-[#1a0033] border-2 border-black p-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] {cardId ===
-                    currentCardId
-                      ? 'ring-4 ring-[#F4E04D]'
-                      : ''}"
+                    class={`relative bg-[#1a0033] border-2 border-black p-2 shadow-[4px_4px_0_rgba(0,0,0,1)] ${
+                      id === currentCardId ? "ring-4 ring-[#F4E04D]" : ""
+                    }`}
                   >
-                    <img
-                      src={cardImage(cardId)}
-                      alt={`Card ${cardId}`}
-                      class="w-full aspect-square object-cover border border-[#C9B5E8]"
-                    />
-                    <span
-                      class="absolute top-1 right-1 bg-[#F4E04D] text-[#1a0033] border border-black text-[10px] font-black px-1"
+                    <div
+                      class="relative w-full overflow-hidden rounded-sm border border-[#C9B5E8] bg-[#0f0220]"
+                      style="aspect-ratio:320/500;"
                     >
-                      #{cardId}
-                    </span>
+                      <img
+                        src={cardImage(id)}
+                        alt={`Card ${id}`}
+                        class="absolute inset-0 w-full h-full object-contain"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
                   </div>
                 {/each}
               </div>

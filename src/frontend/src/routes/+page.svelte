@@ -118,7 +118,7 @@
             <span
               class="bg-white text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             >
-              1–1026
+              363
             </span>
           </div>
           <h3

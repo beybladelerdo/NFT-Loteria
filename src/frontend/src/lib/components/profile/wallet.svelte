@@ -90,7 +90,7 @@
           <div class="flex items-center gap-4">
             <!-- Token Icon -->
             <div
-              class="w-16 h-16 bg-white border-2 border-black flex items-center justify-center flex-shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              class="w-16 h-16 flex items-center justify-center flex-shrink-0"
             >
               <img
                 src={token.icon}
