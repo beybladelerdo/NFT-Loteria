@@ -18,7 +18,8 @@ import List "mo:core/List";
 import Sha256 "mo:sha2/Sha256";
 import Blob "mo:core/Blob";
 import Escrow "escrow";
-import E "enums";
+import ProfileStats "profileStats";
+import Analytics "analytics";
 import Utils "utilities";
 import Ids "ids";
 import Commands "commands";
@@ -26,15 +27,15 @@ import Queries "queries";
 
 persistent actor GameLogic {
 
-  type Entry = (Nat32, Text);
-  type PaidKey = (Text, Principal);
+
   let burnAddress = "0000000000000000000000000000000000000000000000000000000000000001";
-  let ext : actor { getRegistry : shared query () -> async [Entry] } = actor ("psaup-3aaaa-aaaak-qsxlq-cai");
+  let ext : actor { getRegistry : shared query () -> async [T.Entry] } = actor ("psaup-3aaaa-aaaak-qsxlq-cai");
   func devFeeSubAcc() : Blob {
   Sha256.fromArray(#sha256, Blob.toArray(Text.encodeUtf8("dev-fee")))
 };
 
   private var games = Map.empty<Text, T.Game>();
+  private var gameChats = Map.empty<Text, List.List<T.ChatMessage>>();
   private var profiles = Map.empty<Principal, T.Profile>();
   private var owners = Map.empty<Nat32, Text>();
   private var ownerPrincipals = Map.empty<Nat32, ?Principal>();
@@ -42,7 +43,9 @@ persistent actor GameLogic {
   private var tablas = Map.empty<Nat32, T.Tabla>();
   private var admins = Map.empty<Principal, Bool>();
   private var devWallet : ?Principal = null;
-  private var paidSet = Map.empty<PaidKey, Bool>();
+  private var analytics = Analytics.emptyState();
+  private var paidSet = Map.empty<T.PaidKey, Bool>();
+  private var failedClaims = Map.empty<Text, T.FailedClaim>();
 
   let e8 : Nat = 100_000_000;
   let letters = Text.toArray("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
@@ -56,20 +59,153 @@ persistent actor GameLogic {
       case null false;
     }
   };
-  
-  func paidCmp(a : PaidKey, b : PaidKey) : {#less;#equal;#greater} {
-    let c = Text.compare(a.0, b.0); if (c != #equal) return c;
-    Principal.compare(a.1, b.1);
-  };
   func hasPaid(gid : Text, p : Principal) : Bool =
-    switch (Map.get(paidSet, paidCmp, (gid, p))) { case (?_) true; case null false };
+    switch (Map.get(paidSet, Utils.paidCmp, (gid, p))) { case (?_) true; case null false };
   func markPaid(gid : Text, p : Principal) =
-    Map.add(paidSet, paidCmp, (gid, p), true);
+    Map.add(paidSet, Utils.paidCmp, (gid, p), true);
   
   func prizePoolSubAcc(gameId : Text) : Blob {
   Sha256.fromArray(#sha256 ,Blob.toArray(Text.encodeUtf8("pot:" # gameId)))
   };
+  private func processPayouts(gameId : Text, claim : T.FailedClaim) : async Result.Result<(), Text> {
+    let l = Escrow.ledgerOf(claim.tokenType);
+    let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+    let now_ns = Nat64.fromNat(Int.abs(Time.now()));
+    
+    var status = claim.payoutStatus;
+    var lastError = "";
 
+    if (not status.devFeePaid and claim.devFee > 0) {
+      let devAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(devFeeSubAcc()));
+      let res = await l.icrc1_transfer({
+        from_subaccount = potAcct.subaccount;
+        to = devAcct;
+        amount = claim.devFee;
+        fee = null;
+        memo = null;
+        created_at_time = ?now_ns
+      });
+      switch (res) {
+        case (#Ok _) {
+          status := { status with devFeePaid = true };
+          switch (devWallet) {
+            case (?wallet) { ignore await l.icrc1_transfer({
+              from_subaccount = ?Blob.toArray(devFeeSubAcc());
+              to = Escrow.acct(wallet, null);
+              amount = claim.devFee;
+              fee = null;
+              memo = null;
+              created_at_time = ?now_ns
+            }) };
+            case null {} 
+          };
+        };
+        case (#Err e) { lastError := "Dev fee: " # debug_show e };
+      };
+    };
+
+    if (not status.tablaOwnerPaid) {
+      switch (claim.tablaOwnerPayment) {
+        case (?#icrc1(principal)) {
+          if (claim.tablaOwnerFee > 0) {
+            let res = await l.icrc1_transfer({
+              from_subaccount = potAcct.subaccount;
+              to = Escrow.acct(principal, null);
+              amount = claim.tablaOwnerFee;
+              fee = null;
+              memo = null;
+              created_at_time = ?now_ns
+            });
+            switch (res) {
+              case (#Ok _) { 
+                status := { status with tablaOwnerPaid = true };
+                Analytics.recordTablaEarning(analytics, claim.tablaId, claim.tokenType, claim.tablaOwnerFee);
+              };
+              case (#Err e) { lastError := "Tabla owner: " # debug_show e };
+            };
+          } else {
+            status := { status with tablaOwnerPaid = true };
+          };
+        };
+        case (?#icpAccount(accountBlob)) {
+          if (claim.tablaOwnerFee > 0) {
+            let icpLedger : actor {
+              transfer : ({
+                to : Blob;
+                fee : { e8s : Nat64 };
+                memo : Nat64;
+                from_subaccount : ?Blob;
+                created_at_time : ?{ timestamp_nanos : Nat64 };
+                amount : { e8s : Nat64 };
+              }) -> async { #Ok : Nat64; #Err : {
+                #TxTooOld : { allowed_window_nanos : Nat64 };
+                #BadFee : { expected_fee : { e8s : Nat64 } };
+                #TxDuplicate : { duplicate_of : Nat64 };
+                #TxCreatedInFuture;
+                #InsufficientFunds : { balance : { e8s : Nat64 } };
+              }};
+            } = actor("ryjl3-tyaaa-aaaaa-aaaba-cai");
+            let res = await icpLedger.transfer({
+              to = accountBlob;
+              fee = { e8s = 10_000 };
+              memo = 0;
+              from_subaccount = ?Blob.fromArray(Blob.toArray(prizePoolSubAcc(gameId)));
+              created_at_time = ?{ timestamp_nanos = now_ns };
+              amount = { e8s = Nat64.fromNat(claim.tablaOwnerFee) };
+            });
+            switch (res) {
+              case (#Ok _) { 
+                status := { status with tablaOwnerPaid = true };
+                Analytics.recordTablaEarning(analytics, claim.tablaId, claim.tokenType, claim.tablaOwnerFee);
+              };
+              case (#Err e) { lastError := "Tabla owner ICP: " # debug_show e };
+            };
+          } else {
+            status := { status with tablaOwnerPaid = true };
+          };
+        };
+        case null { status := { status with tablaOwnerPaid = true } };
+      };
+    };
+
+    if (not status.winnerPaid) {
+      let res = await l.icrc1_transfer({
+        from_subaccount = potAcct.subaccount;
+        to = Escrow.acct(claim.player, null);
+        amount = claim.winnerAmount;
+        fee = null;
+        memo = null;
+        created_at_time = ?now_ns
+      });
+      switch (res) {
+        case (#Ok _) { status := { status with winnerPaid = true } };
+        case (#Err e) { lastError := "Winner: " # debug_show e };
+      };
+    };
+
+    if (not status.hostPaid) {
+      let res = await l.icrc1_transfer({
+        from_subaccount = potAcct.subaccount;
+        to = Escrow.acct(claim.host, null);
+        amount = claim.hostFee;
+        fee = null;
+        memo = null;
+        created_at_time = ?now_ns
+      });
+      switch (res) {
+        case (#Ok _) { status := { status with hostPaid = true } };
+        case (#Err e) { lastError := "Host: " # debug_show e };
+      };
+    };
+
+    if (status.devFeePaid and status.tablaOwnerPaid and status.winnerPaid and status.hostPaid) {
+      ignore Map.delete(failedClaims, Text.compare, gameId);
+      #ok(())
+    } else {
+      Map.add(failedClaims, Text.compare, gameId, { claim with payoutStatus = status; lastError = lastError; failedAt = Time.now() });
+      #err("Partial payout. Retry needed: " # lastError)
+    }
+  };
   public shared ({ caller }) func bootstrapAdmin() : async Result.Result<(), Text> {
     if (Map.size(admins) > 0) return #err("already bootstrapped");
     Map.add<Principal, Bool>(admins, Principal.compare, caller, true);
@@ -375,6 +511,26 @@ persistent actor GameLogic {
 
   public shared ({ caller }) func joinGame(dto : Commands.JoinGame) : async Result.Result<(), Text> {
   if (Principal.isAnonymous(caller)) return #err("Anonymous identity cannot join games");
+for ((gameId, game) in Map.entries(games)) {
+  if (gameId == dto.gameId) { /* skip */ } else {
+    let isRelevantStatus = switch (game.status) {
+      case (#lobby) { true };
+      case (#active) { true };
+      case (_) { false };
+    };
+    
+    if (isRelevantStatus) {
+      if (game.host == caller) {
+        return #err("You are hosting game " # gameId # ". Please end that game first.");
+      };
+      for ((playerId, _) in Array.values(game.tablas)) {
+        if (playerId == caller) {
+          return #err("You are already in game " # gameId # ". Please leave that game first.");
+        };
+      };
+    };
+  };
+};
   
   if (dto.rentedTablaIds.size() == 0) return #err("At least one tabla must be selected");
   if (dto.rentedTablaIds.size() > Constants.MAX_TABLAS_PER_PLAYER) return #err("Too many tablas selected");
@@ -456,7 +612,10 @@ persistent actor GameLogic {
     });
     
     switch (pulled) {
-      case (#Ok _) { markPaid(dto.gameId, caller) };
+      case (#Ok amount) { 
+        Analytics.recordVolume(analytics, game.tokenType, amount);
+        markPaid(dto.gameId, caller)
+      };
       case (#Err err) {
         removeTablaReservation(dto.gameId, caller, dto.rentedTablaIds);
         return #err(
@@ -474,7 +633,6 @@ persistent actor GameLogic {
       };
     };
   };
-  
   let ?finalGame = Map.get<Text, T.Game>(games, Text.compare, dto.gameId)
     else return #err("Game not found");
   
@@ -666,7 +824,7 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
       };
     };
   };
-  public shared ({ caller }) func claimWin(gameId : Text, tablaId : Ids.TablaId) : async Result.Result<(), Text> {
+ public shared ({ caller }) func claimWin(gameId : Text, tablaId : Ids.TablaId) : async Result.Result<(), Text> {
   let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
     else return #err("Game not found");
   if (game.status != #active) return #err("Game is not active");
@@ -689,16 +847,17 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
   };
   if (not won) return #err("Win condition not met");
 
-  Map.add<Text, T.Game>(games, Text.compare, gameId, { game with winner = ?caller });
+  Map.add<Text, T.Game>(games, Text.compare, gameId, { game with winner = ?caller; status = #completed });
+  ProfileStats.updateAllPlayers(profiles, game.tablas, caller);
+  Analytics.recordTablaPlayed(analytics, tablaId);
 
   let l = Escrow.ledgerOf(game.tokenType);
   let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
   let pot = await l.icrc1_balance_of(potAcct);
-  let now_ns = Nat64.fromNat(Int.abs(Time.now()));
+  
+  Analytics.recordLargestPot(analytics, game.tokenType, pot);
 
-  var actualTablaOwnerFee : Nat = 0;
   var tablaOwnerPayment : ?{ #icrc1: Principal; #icpAccount: Blob } = null;
-
   let ownerPrincipal = Map.get<Nat32, ?Principal>(ownerPrincipals, Nat32.compare, tablaId);
   switch (ownerPrincipal) {
     case (?(?principal)) { tablaOwnerPayment := ?#icrc1(principal) };
@@ -723,6 +882,7 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
   let needsClassic : Bool = switch (tablaOwnerPayment) { case (?#icpAccount(_)) true; case _ false };
   let classicFeeBudget : Nat = if (needsClassic) icpClassicFee else 0;
   var feeBudget : Nat = icrcFee * icrcDebits + classicFeeBudget;
+  
   if (pot <= feeBudget) return #err("Pot too small to cover network fees");
   let netPot : Nat = pot - feeBudget;
 
@@ -731,100 +891,25 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
   var hostFee = netPot * game.hostFeePercent / 100;
   var winnerAmount = netPot - devFee - tablaOwnerFee - hostFee;
 
-  if (devFee == 0 and icrcDebits > baseIcrcDebits) {
-    icrcDebits -= 1;
-    let newBudget = icrcFee * icrcDebits + classicFeeBudget;
-    if (feeBudget > newBudget) { winnerAmount += (feeBudget - newBudget) };
-    feeBudget := newBudget;
+  let claim : T.FailedClaim = {
+    gameId = gameId;
+    tablaId = tablaId;
+    player = caller;
+    host = game.host;
+    tablaOwnerPayment = tablaOwnerPayment;
+    winnerAmount = winnerAmount;
+    hostFee = hostFee;
+    tablaOwnerFee = tablaOwnerFee;
+    devFee = devFee;
+    tokenType = game.tokenType;
+    failedAt = Time.now();
+    payoutStatus = { devFeePaid = false; tablaOwnerPaid = false; winnerPaid = false; hostPaid = false };
+    lastError = "";
   };
 
-  let payIcrc1 = func (toOwner : Principal, amt : Nat, fromSub : ?[Nat8]) : async Result.Result<(), Text> {
-    if (amt == 0) return #ok(());
-    let res = await l.icrc1_transfer({
-      from_subaccount = fromSub;
-      to = Escrow.acct(toOwner, null);
-      amount = amt;
-      fee = null;
-      memo = null;
-      created_at_time = ?now_ns
-    });
-    switch (res) { case (#Ok _) #ok(()); case (#Err e) #err("payout failed: " # debug_show e) };
-  };
-
-  let payIcpAccount = func (toAccountBlob : Blob, amt : Nat, fromSub : ?[Nat8]) : async Result.Result<(), Text> {
-    if (amt == 0) return #ok(());
-    let icpLedger : actor {
-      transfer : ({
-        to : Blob;
-        fee : { e8s : Nat64 };
-        memo : Nat64;
-        from_subaccount : ?Blob;
-        created_at_time : ?{ timestamp_nanos : Nat64 };
-        amount : { e8s : Nat64 };
-      }) -> async { #Ok : Nat64; #Err : {
-        #TxTooOld : { allowed_window_nanos : Nat64 };
-        #BadFee : { expected_fee : { e8s : Nat64 } };
-        #TxDuplicate : { duplicate_of : Nat64 };
-        #TxCreatedInFuture;
-        #InsufficientFunds : { balance : { e8s : Nat64 } };
-      }};
-    } = actor("ryjl3-tyaaa-aaaaa-aaaba-cai");
-    let res = await icpLedger.transfer({
-      to = toAccountBlob;
-      fee = { e8s = 10_000 };
-      memo = 0;
-      from_subaccount = switch (fromSub) { case (?arr) ?Blob.fromArray(arr); case null null };
-      created_at_time = ?{ timestamp_nanos = now_ns };
-      amount = { e8s = Nat64.fromNat(amt) };
-    });
-    switch (res) { case (#Ok _) #ok(()); case (#Err e) #err("ICP payout failed: " # debug_show e) };
-  };
-
-  var remaining : Nat = pot;
-
-  if (devFee > 0) {
-    if (remaining < devFee + icrcFee) return #err("Insufficient funds for dev fee");
-    remaining -= (devFee + icrcFee);
-    let devAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(devFeeSubAcc()));
-    let res = await l.icrc1_transfer({
-      from_subaccount = potAcct.subaccount;
-      to = devAcct;
-      amount = devFee;
-      fee = null;
-      memo = null;
-      created_at_time = ?now_ns
-    });
-    switch (res) { case (#Err e) return #err("Dev fee transfer failed: " # debug_show e); case (#Ok _) {} };
-    switch (devWallet) { case (?wallet) { ignore await payIcrc1(wallet, devFee, ?Blob.toArray(devFeeSubAcc())) }; case null {} };
-  };
-
-  switch (tablaOwnerPayment) {
-    case (?#icrc1(principal)) {
-      if (remaining < tablaOwnerFee + icrcFee) return #err("Insufficient funds for owner payout");
-      remaining -= (tablaOwnerFee + icrcFee);
-      switch (await payIcrc1(principal, tablaOwnerFee, potAcct.subaccount)) { case (#err e) return #err(e); case (#ok ()) {} };
-      actualTablaOwnerFee := tablaOwnerFee;
-    };
-    case (?#icpAccount(accountBlob)) {
-      if (remaining < tablaOwnerFee + icpClassicFee) return #err("Insufficient funds for owner payout");
-      remaining -= (tablaOwnerFee + icpClassicFee);
-      switch (await payIcpAccount(accountBlob, tablaOwnerFee, potAcct.subaccount)) { case (#err e) return #err(e); case (#ok ()) {} };
-      actualTablaOwnerFee := tablaOwnerFee;
-    };
-    case null { actualTablaOwnerFee := 0 };
-  };
-
-  if (remaining < winnerAmount + icrcFee) return #err("Insufficient funds for winner payout");
-  remaining -= (winnerAmount + icrcFee);
-  switch (await payIcrc1(caller, winnerAmount, potAcct.subaccount)) { case (#err e) return #err(e); case (#ok ()) {} };
-
-  if (remaining < hostFee + icrcFee) return #err("Insufficient funds for host payout");
-  remaining -= (hostFee + icrcFee);
-  switch (await payIcrc1(game.host, hostFee, potAcct.subaccount)) { case (#err e) return #err(e); case (#ok ()) {} };
-
-  Map.add<Text, T.Game>(games, Text.compare, gameId, { game with status = #completed });
-  #ok(());
+  await processPayouts(gameId, claim)
 };
+
 
   public shared ({ caller }) func endGame(gameId : Text) : async Result.Result<(), Text> {
     switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {
@@ -993,7 +1078,7 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
   public query func tablaCount() : async Nat {
     Map.size(tablas);
   };
-  public composite query func getPot(gameId : Text) : async Result.Result<{ amountBaseUnits : Nat; symbol : Text; decimals : Nat8 }, Text> {
+public func getPot(gameId : Text) : async Result.Result<{ amountBaseUnits : Nat; symbol : Text; decimals : Nat8 }, Text> {
   let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
     else return #err("Game not found");
 
@@ -1043,7 +1128,7 @@ public shared ({ caller }) func adminUpdateTablaMetadata(dto : Commands.UpdateTa
 };
 
 public shared ({ caller }) func disburseDevFees(
-  tokenType : E.TokenType,
+  tokenType : T.TokenType,
   recipient : Principal,
   amount : Nat
 ) : async Result.Result<(), Text> {
@@ -1071,7 +1156,7 @@ public shared ({ caller }) func disburseDevFees(
   };
 };
 
-public composite query func getDevFeeBalance(tokenType : E.TokenType) : async Nat {
+public func getDevFeeBalance(tokenType : T.TokenType) : async Nat {
   let l = Escrow.ledgerOf(tokenType);
   let devAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(devFeeSubAcc()));
   await l.icrc1_balance_of(devAcct)
@@ -1112,5 +1197,314 @@ public composite query func getDevFeeBalance(tokenType : E.TokenType) : async Na
   
   let arr = List.toArray(out);
   if (Array.size(arr) == 0) { #err("No tablas available for this game") } else { #ok(arr) };
+};
+public shared ({ caller }) func terminateGame(gameId : Text) : async Result.Result<Text, Text> {
+  let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
+    else return #err("Game not found");
+  
+  // Check game status and authorization together
+  switch (game.status) {
+    case (#completed) { return #err("Cannot terminate completed game") };
+    case (#active) { 
+      // Only admin can terminate active games
+      if (not isAdmin(caller)) {
+        return #err("Unauthorized: only admin can terminate active games");
+      };
+    };
+    case (#lobby) {
+      // Host or admin can terminate lobby games
+      if (caller != game.host and not isAdmin(caller)) {
+        return #err("Unauthorized: only game host or admin can terminate lobby games");
+      };
+    };
+  };
+  
+  let ledger = Escrow.ledgerOf(game.tokenType);
+  let ledgerFee = await ledger.icrc1_fee();
+  let prizePoolAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+  
+  if (Array.size(game.tablas) == 0) {
+    ignore Map.take<Text, T.Game>(games, Text.compare, gameId);
+    return #ok("Game deleted successfully (no players to refund)");
+  };
+  
+  var playerTablaCounts = Map.empty<Principal, Nat>();
+  
+  for ((playerId, tablaId) in Array.values(game.tablas)) {
+    let currentCount = switch (Map.get<Principal, Nat>(playerTablaCounts, Principal.compare, playerId)) {
+      case (?count) count;
+      case null 0;
+    };
+    Map.add<Principal, Nat>(playerTablaCounts, Principal.compare, playerId, currentCount + 1);
+  };
+  
+  var refundErrors = "";
+  var successfulRefunds = 0;
+  let now_ns = Nat64.fromNat(Int.abs(Time.now()));
+  
+  for ((playerId, tablaCount) in Map.entries(playerTablaCounts)) {
+    let totalPaid = game.entryFee * tablaCount;
+    
+    if (totalPaid <= ledgerFee) {
+      refundErrors := refundErrors # "Player " # Principal.toText(playerId) # ": refund amount too small; ";
+    } else {
+      let refundAmount = totalPaid - ledgerFee;
+      
+      let transferResult = await ledger.icrc1_transfer({
+        from_subaccount = prizePoolAcct.subaccount;
+        to = Escrow.acct(playerId, null);
+        amount = refundAmount;
+        fee = ?ledgerFee;
+        memo = null;
+        created_at_time = ?now_ns;
+      });
+      
+      switch (transferResult) {
+        case (#Ok _) {
+          successfulRefunds += 1;
+        };
+        case (#Err e) {
+          refundErrors := refundErrors # "Player " # Principal.toText(playerId) # ": " # debug_show(e) # "; ";
+        };
+      };
+    };
+  };
+  
+  ignore Map.take<Text, T.Game>(games, Text.compare, gameId);
+  
+  if (refundErrors == "") {
+    return #ok("Game terminated successfully. Refunded " # Nat.toText(successfulRefunds) # " player(s)");
+  } else {
+    return #ok("Game terminated with errors. Refunded " # Nat.toText(successfulRefunds) # " player(s). Errors: " # refundErrors);
+  };
+};
+
+public query ({ caller }) func isPlayerInGame() : async ?{ gameId: Text; role: { #host; #player } } {
+  if (Principal.isAnonymous(caller)) return null;
+
+  for ((gameId, game) in Map.entries(games)) {
+    let isRelevantStatus = switch (game.status) {
+      case (#lobby) { true };
+      case (#active) { true };
+      case (_) { false };
+    };
+    
+    if (isRelevantStatus and game.host == caller) {
+      return ?{ gameId = gameId; role = #host };
+    };
+  };
+
+  for ((gameId, game) in Map.entries(games)) {
+    let isRelevantStatus = switch (game.status) {
+      case (#lobby) { true };
+      case (#active) { true };
+      case (_) { false };
+    };
+    
+    if (isRelevantStatus) {
+      for ((playerId, tablaId) in Array.values(game.tablas)) {
+        if (playerId == caller) {
+          return ?{ gameId = gameId; role = #player };
+        };
+      };
+    };
+  };
+  
+  null
+};
+public query func getPlatformVolume() : async Analytics.VolumeData {
+  Analytics.getVolume(analytics)
+};
+
+public query func getTablaStats(tablaId : Nat32) : async ?Analytics.TablaEarnings {
+  Analytics.getTablaEarnings(analytics, tablaId)
+};
+
+public query func getAllTablaStats() : async [Analytics.TablaEarnings] {
+  Analytics.getAllTablaEarnings(analytics)
+};
+public query func get24hVolume() : async Analytics.VolumeData {
+  Analytics.get24hVolume(analytics)
+};
+
+public query func getLargestPots() : async Analytics.VolumeData {
+  Analytics.getLargestPots(analytics)
+};
+  public shared ({ caller }) func retryFailedClaim(gameId : Text) : async Result.Result<(), Text> {
+    let ?claim = Map.get(failedClaims, Text.compare, gameId)
+      else return #err("No failed claim found");
+    
+    if (claim.player != caller) return #err("Only the winner can retry");
+    
+    await processPayouts(gameId, claim)
+  };
+ public shared ({ caller }) func getFailedClaims() : async [T.FailedClaim] {
+  let out = List.empty<T.FailedClaim>();
+  for (claim in Map.values(failedClaims)) {
+    if (claim.player == caller) {
+      List.add(out, claim);
+    };
+  };
+  List.toArray(out)
+};
+  public shared func findStuckGames(threshold : Nat) : async [(Text, Nat, T.TokenType)] {
+    let out = List.empty<(Text, Nat, T.TokenType)>();
+    
+    for ((gameId, game) in Map.entries(games)) {
+      if (game.status == #completed and game.winner != null) {
+        let l = Escrow.ledgerOf(game.tokenType);
+        let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+        let balance = await l.icrc1_balance_of(potAcct);
+        
+        if (balance > threshold) {
+          List.add(out, (gameId, balance, game.tokenType));
+        };
+      };
+    };
+    
+    List.toArray(out)
+  };
+
+  public shared ({ caller }) func getRecentGamesForPlayer(limit : Nat) : async [{
+  gameId : Text;
+  mode : T.GameMode;
+  tokenType : T.TokenType;
+  entryFee : Nat;
+  status : T.GameStatus;
+  winner : ?Principal;
+  createdAt : Int;
+  isWinner : Bool;
+  isHost : Bool;
+}] {
+  let out = List.empty<{
+    gameId : Text;
+    mode : T.GameMode;
+    tokenType : T.TokenType;
+    entryFee : Nat;
+    status : T.GameStatus;
+    winner : ?Principal;
+    createdAt : Int;
+    isWinner : Bool;
+    isHost : Bool;
+  }>();
+  
+  var count = 0;
+  
+  for ((gameId, game) in Map.entries(games)) {
+    if (count >= limit) return List.toArray(out);
+    
+    var isPlayer = false;
+    for ((p, _) in Array.values(game.tablas)) {
+      if (p == caller) { isPlayer := true };
+    };
+    
+    let isHost = game.host == caller;
+    
+    if (isPlayer or isHost) {
+      let isWinner = switch (game.winner) {
+        case (?w) w == caller;
+        case null false;
+      };
+      
+      List.add(out, {
+        gameId = gameId;
+        mode = game.mode;
+        tokenType = game.tokenType;
+        entryFee = game.entryFee;
+        status = game.status;
+        winner = game.winner;
+        createdAt = game.createdAt;
+        isWinner = isWinner;
+        isHost = isHost;
+      });
+      
+      count += 1;
+    };
+  };
+  
+  List.toArray(out)
+};
+public shared ({ caller }) func sendChatMessage(gameId : Text, message : Text) : async Result.Result<(), Text> {
+  let ?game = Map.get(games, Text.compare, gameId)
+    else return #err("Game not found");
+  
+  var isParticipant = game.host == caller;
+  if (not isParticipant) {
+    for ((p, _) in Array.values(game.tablas)) {
+      if (p == caller) { isParticipant := true };
+    };
+  };
+  if (not isParticipant) return #err("Not a participant");
+  
+  let ?profile = Map.get(profiles, Principal.compare, caller)
+    else return #err("Profile not found");
+  
+  let newMessage : T.ChatMessage = {
+    sender = caller;
+    username = profile.username;
+    message = message;
+    timestamp = Time.now();
+  };
+  
+  let existing = switch (Map.get(gameChats, Text.compare, gameId)) {
+    case (?msgs) msgs;
+    case null List.empty<T.ChatMessage>();
+  };
+  
+  List.add(existing, newMessage);
+  Map.add(gameChats, Text.compare, gameId, existing);
+  
+  #ok(())
+};
+
+public query func getChatMessages(gameId : Text) : async [T.ChatMessage] {
+  switch (Map.get(gameChats, Text.compare, gameId)) {
+    case (?msgs) List.toArray(msgs);
+    case null [];
+  }
+};
+
+public func clearGameChat(gameId : Text) : async () {
+  ignore Map.delete(gameChats, Text.compare, gameId);
+};
+public shared({ caller }) func adminDisburseStuckPrize(gameId : Text) : async Result.Result<Nat, Text> {
+  if (not isAdmin(caller)) {
+    return #err("Not authorized");
+  };
+  
+  let ?game = Map.get<Text, T.Game>(games, Text.compare, gameId)
+    else return #err("Game not found");
+  
+  let ?winner = game.winner else return #err("No winner set");
+  
+  let ledger = Escrow.ledgerOf(game.tokenType);
+  let fee = await ledger.icrc1_fee();
+  
+  let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+  let balance = await ledger.icrc1_balance_of(potAcct);
+  
+  if (balance <= fee) {
+    return #err("Balance too low to cover fee. Balance: " # Nat.toText(balance) # ", Fee: " # Nat.toText(fee));
+  };
+  
+  let payoutAmount = balance - fee;
+  
+  let transferArgs : Escrow.Icrc1TransferArgs = {
+    from_subaccount = ?Blob.toArray(prizePoolSubAcc(gameId));
+    to = { owner = winner; subaccount = null };
+    amount = payoutAmount;
+    fee = ?fee;
+    memo = null;
+    created_at_time = null;
+  };
+  
+  switch (await ledger.icrc1_transfer(transferArgs)) {
+    case (#Ok(blockIndex)) {
+      #ok(blockIndex)
+    };
+    case (#Err(e)) {
+      #err("Transfer failed: " # debug_show(e))
+    };
+  };
 };
 };

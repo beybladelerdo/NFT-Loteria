@@ -107,10 +107,10 @@
   </div>
 {:else}
   <div
-    class="flex flex-col items-center justify-center min-h-screen px-4 bg-[#1a0033] relative overflow-hidden"
+    class="min-h-screen p-4 sm:p-6 md:p-8 bg-[#1a0033] relative overflow-y-auto"
   >
     <!-- Flickering Grid Background -->
-    <div class="absolute inset-0">
+    <div class="absolute inset-0 pointer-events-none">
       <FlickeringGrid
         class="z-0 absolute inset-0 size-full"
         squareSize={4}
@@ -121,33 +121,34 @@
       />
     </div>
 
-    <div class="w-full max-w-2xl relative z-10">
+    <!-- Content Container -->
+    <div class="w-full max-w-2xl mx-auto relative z-10 py-8 md:py-12">
       <!-- Main Card -->
       <div
-        class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-8 md:p-12 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
+        class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 sm:p-8 md:p-12 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
       >
         <!-- Header -->
-        <div class="text-center mb-8">
+        <div class="text-center mb-6 sm:mb-8">
           <h1
-            class="text-4xl md:text-5xl font-black uppercase mb-4"
-            style="text-shadow: 4px 4px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;"
+            class="text-3xl sm:text-4xl md:text-5xl font-black uppercase mb-3 sm:mb-4 leading-tight"
+            style="text-shadow: 2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;"
           >
             <span class="text-[#F4E04D]">CHOOSE YOUR TAG</span>
           </h1>
-          <p class="text-base md:text-lg font-bold text-white max-w-xl mx-auto">
+          <p class="text-sm sm:text-base md:text-lg font-bold text-white max-w-xl mx-auto px-2">
             We've generated a unique username for you. Keep it or change it—your
             choice.
           </p>
         </div>
 
         <!-- Username Display -->
-        <div class="mb-8">
+        <div class="mb-6 sm:mb-8">
           <div
-            class="bg-[#1a0033] border-4 border-[#F4E04D] p-6 text-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+            class="bg-[#1a0033] border-2 sm:border-4 border-[#F4E04D] p-4 sm:p-6 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] break-all"
           >
             <p
-              class="text-3xl md:text-4xl font-black text-[#F4E04D]"
-              style="text-shadow: 3px 3px 0px #000;"
+              class="text-2xl sm:text-3xl md:text-4xl font-black text-[#F4E04D]"
+              style="text-shadow: 2px 2px 0px #000;"
             >
               @{username}
             </p>
@@ -156,12 +157,12 @@
 
         <!-- Edit Section -->
         <div
-          class="bg-[#1a0033] border-4 border-black p-6 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+          class="bg-[#1a0033] border-2 sm:border-4 border-black p-4 sm:p-6 mb-4 sm:mb-6 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
         >
-          <div class="space-y-4">
+          <div class="space-y-3 sm:space-y-4">
             <label
               for="username"
-              class="block text-sm font-black text-[#C9B5E8] uppercase tracking-wider"
+              class="block text-xs sm:text-sm font-black text-[#C9B5E8] uppercase tracking-wider"
             >
               EDIT USERNAME
             </label>
@@ -170,13 +171,13 @@
               type="text"
               bind:value={username}
               oninput={handleUsernameInput}
-              class="w-full px-4 py-3 text-lg bg-white border-4 border-black text-[#1a0033] placeholder-gray-500 focus:outline-none focus:border-[#F4E04D] font-black uppercase shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+              class="w-full px-3 sm:px-4 py-2 sm:py-3 text-base sm:text-lg bg-white border-2 sm:border-4 border-black text-[#1a0033] placeholder-gray-500 focus:outline-none focus:border-[#F4E04D] font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] sm:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
               placeholder="YOUR-USERNAME"
             />
 
             {#if isEditing && username.length > 0}
               <div
-                class="text-sm font-bold bg-[#1a0033] border-2 border-[#C9B5E8] p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                class="text-xs sm:text-sm font-bold bg-[#1a0033] border-2 border-[#C9B5E8] p-2 sm:p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
               >
                 {#if isCheckingUsername}
                   <p class="text-[#C9B5E8]">CHECKING AVAILABILITY...</p>
@@ -189,7 +190,7 @@
             {/if}
 
             <p
-              class="text-xs font-bold text-white bg-[#522785] p-3 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              class="text-xs font-bold text-white bg-[#522785] p-2 sm:p-3 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             >
               5-20 CHARACTERS. YOU CAN CHANGE IT LATER.
             </p>
@@ -197,10 +198,10 @@
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <div class="flex flex-col gap-3 sm:gap-4">
           <button
             onclick={generateUsername}
-            class="px-6 py-3 bg-[#C9B5E8] text-[#1a0033] font-black uppercase border-4 border-black hover:bg-[#d9c9f0] hover:scale-105 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            class="w-full px-4 sm:px-6 py-3 bg-[#C9B5E8] text-[#1a0033] text-sm sm:text-base font-black uppercase border-2 sm:border-4 border-black hover:bg-[#d9c9f0] active:scale-95 sm:hover:scale-105 transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           >
             GENERATE NEW
           </button>
@@ -208,7 +209,7 @@
           <button
             onclick={saveUsername}
             disabled={isEditing && (!usernameAvailable || isCheckingUsername)}
-            class="px-8 py-3 bg-[#F4E04D] text-[#1a0033] font-black uppercase border-4 border-black hover:bg-[#fff27d] hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            class="w-full px-4 sm:px-8 py-3 bg-[#F4E04D] text-[#1a0033] text-sm sm:text-base font-black uppercase border-2 sm:border-4 border-black hover:bg-[#fff27d] active:scale-95 sm:hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
           >
             {isEditing ? "CONTINUE >>" : "SKIP >>"}
           </button>

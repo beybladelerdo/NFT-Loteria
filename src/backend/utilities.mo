@@ -1,6 +1,8 @@
 import Hash "mo:base/Hash";
 import Result "mo:base/Result";
 import Nat32 "mo:core/Nat32";
+import Text "mo:core/Text";
+import Principal "mo:core/Principal";
 import T "types";
 import Ids "ids";
 import Queries "queries";
@@ -13,6 +15,10 @@ module Utilities {
 
   public let eqNat32 = func(a : Nat32, b : Nat32) : Bool {
     a == b;
+  };
+  public let  paidCmp = func(a : T.PaidKey, b : T.PaidKey) : {#less;#equal;#greater} {
+    let c = Text.compare(a.0, b.0); if (c != #equal) return c;
+    Principal.compare(a.1, b.1);
   };
 
   public let hashNat32 = func(key : Nat32) : Hash.Hash {

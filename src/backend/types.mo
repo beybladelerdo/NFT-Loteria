@@ -1,10 +1,44 @@
 import Ids "ids";
-import Enums "enums";
 import BaseIds "mo:waterway-mops/base/ids";
 import Nat32 "mo:core/Nat32";
 
 module Types {
+  public type Entry = (Nat32, Text);
+  public type PaidKey = (Text, Principal);
+   public type GameStatus = {
+    #lobby; // Players can join
+    #active; // Game in progress
+    #completed; // Game finished
+  };
 
+  // Game mode
+  public type GameMode = {
+    #line; // Win by completing a line, row, or diagonal
+    #blackout; // Win by marking all positions
+  };
+
+  // Token type
+  public type TokenType = {
+    #ICP;
+    #ckBTC;
+    #gldt;
+  };
+
+  // Rarity types
+  public type Rarity = {
+    #common;
+    #uncommon;
+    #rare;
+    #epic;
+    #legendary;
+  };
+
+  // Rental status
+  public type RentalStatus = {
+    #available;
+    #rented;
+    #burned;
+  };
   public type Profile = {
     principalId : BaseIds.PrincipalId;
     username : Text;
@@ -41,9 +75,9 @@ module Types {
     name : Text;
     host : Ids.PlayerId;
     createdAt : Int;
-    status : Enums.GameStatus;
-    mode : Enums.GameMode;
-    tokenType : Enums.TokenType;
+    status : GameStatus;
+    mode : GameMode;
+    tokenType : TokenType;
     entryFee : Nat;
     hostFeePercent : Nat;
     players : [Ids.PlayerId];
@@ -54,6 +88,12 @@ module Types {
     winner : ?Ids.PlayerId;
     prizePool : Nat;
   };
+  public type ChatMessage = {
+  sender : Principal;
+  username : Text;
+  message : Text;
+  timestamp : Int;
+};
 
   // Tabla NFT
   public type Tabla = {
@@ -62,11 +102,11 @@ module Types {
     renter : ?Ids.RenterId;
     gameId : ?Text;
     rentalFee : Nat;
-    tokenType : Enums.TokenType;
-    rarity : Enums.Rarity;
+    tokenType : TokenType;
+    rarity : Rarity;
     metadata : TablaMetadata;
     rentalHistory : [RentalRecord];
-    status : Enums.RentalStatus;
+    status : RentalStatus;
     createdAt : Int;
     updatedAt : Int;
   };
@@ -86,7 +126,7 @@ module Types {
     startTime : Int;
     endTime : ?Int;
     fee : Nat;
-    tokenType : Enums.TokenType;
+    tokenType : TokenType;
   };
 
   // Tabla info (public view)
@@ -96,11 +136,11 @@ module Types {
     renter : ?Ids.RenterId;
     gameId : ?Text;
     rentalFee : Nat;
-    tokenType : Enums.TokenType;
-    rarity : Enums.Rarity;
+    tokenType : TokenType;
+    rarity : Rarity;
     name : Text;
     image : Text;
-    status : Enums.RentalStatus;
+    status : RentalStatus;
     isAvailable : Bool;
   };
   public type Masks = {
@@ -111,4 +151,26 @@ module Types {
     diagOther : Nat32;
     allMask : Nat32;
   };
+  public type PayoutStatus = {
+  devFeePaid : Bool;
+  tablaOwnerPaid : Bool;
+  winnerPaid : Bool;
+  hostPaid : Bool;
+};
+
+public type FailedClaim = {
+  gameId : Text;
+  tablaId : Nat32;
+  player : Principal;
+  host : Principal;
+  tablaOwnerPayment : ?{ #icrc1: Principal; #icpAccount: Blob };
+  winnerAmount : Nat;
+  hostFee : Nat;
+  tablaOwnerFee : Nat;
+  devFee : Nat;
+  tokenType : TokenType;
+  failedAt : Int;
+  payoutStatus : PayoutStatus;
+  lastError : Text;
+};
 };

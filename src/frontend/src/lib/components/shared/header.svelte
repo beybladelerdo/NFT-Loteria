@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Motion, AnimateSharedLayout } from "svelte-motion";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { signOut } from "$lib/services/auth-services";
   import type { Profile } from "../../../../../declarations/backend/backend.did";
@@ -20,7 +20,7 @@
   ];
 
   let activeIdx = $derived(
-    tabs.findIndex((tab) => $page.url.pathname.startsWith(tab.path)),
+    tabs.findIndex((tab) => page.url.pathname.startsWith(tab.path)),
   );
 
   async function handleSignOut() {

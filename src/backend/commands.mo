@@ -1,11 +1,11 @@
-import Ids "./ids";
-import Enums "./enums";
+import Ids "ids";
+import T "types";
 
 module Commands {
   public type CreateGame = {
     name : Text;
-    mode : Enums.GameMode;
-    tokenType : Enums.TokenType;
+    mode : T.GameMode;
+    tokenType : T.TokenType;
     entryFee : Nat;
     hostFeePercent : Nat;
   };
@@ -43,7 +43,7 @@ module Commands {
   public type CreateTabla = {
     tablaId : Nat32;
     cards : [Nat];
-    rarity : Enums.Rarity;
+    rarity : T.Rarity;
     imageUrl : Text;
   };
   public type UpdateTablaMetadata = {

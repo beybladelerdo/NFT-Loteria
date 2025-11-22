@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Root theme + default font stack for non-Amiga text */
 :root {
   font-family:
     "Inter",
@@ -17,6 +18,7 @@
     "Helvetica Neue",
     sans-serif;
 }
+
 :root {
   --color-1: 0 100% 63%;
   --color-2: 270 100% 63%;
@@ -25,18 +27,24 @@
   --color-5: 90 100% 63%;
 }
 
+/* GLOBAL LAYOUT – scrolling fixed */
 html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
   width: 100%;
+  min-height: 100%;
 }
 
-#root {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
+body {
+  font-family: "Amiga", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+    "Helvetica Neue", sans-serif;
+  color: white !important;
+  background-color: #1a0033;
+  min-height: 100vh; /* allow content to grow beyond viewport */
+  overflow-y: auto; /* enable scrolling */
+  -webkit-overflow-scrolling: touch; /* smooth iOS scrolling */
 }
 
 /* Custom scrollbar */
@@ -90,6 +98,8 @@ body {
     box-shadow: 0 0 0 0 rgba(255, 215, 0, 0);
   }
 }
+
+/* Arcade-style panels & buttons */
 .pixel-panel {
   --panel: #2b0f55; /* deep purple */
   --edge: #000; /* black edge */
@@ -101,11 +111,13 @@ body {
     0 0 0 3px var(--accent) inset;
   border-radius: 6px;
 }
+
 .pixel-button {
   border: 3px solid #000;
   box-shadow: 3px 3px 0 #000;
   background: #fff;
 }
+
 .pixel-button:active {
   transform: translate(1px, 1px);
   box-shadow: 2px 2px 0 #000;

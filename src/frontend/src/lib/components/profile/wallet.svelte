@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { tokenStore } from "$lib/stores/token-store";
   import { TokenService } from "$lib/services/token-service";
   import QRModal from "./qr-modal.svelte";
@@ -11,9 +11,23 @@
   let showSendModal = $state(false);
   let selectedToken = $state<string | null>(null);
   let isRefreshing = $state(false);
+  let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
+  const AUTO_REFRESH_INTERVAL = 30000;
 
   onMount(async () => {
     await tokenStore.fetchBalances();
+    refreshInterval = setInterval(() => {
+      if (!isRefreshing && !showQRModal && !showSendModal) {
+        handleRefresh();
+      }
+    }, AUTO_REFRESH_INTERVAL);
+  });
+
+  onDestroy(() => {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
   });
 
   async function handleRefresh() {

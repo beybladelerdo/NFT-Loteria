@@ -4,7 +4,7 @@ import type {
   _SERVICE,
   Profile,
   Result,
-  Result_3,
+  Result_4,
 } from "../../../../declarations/backend/backend.did";
 
 const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
@@ -21,7 +21,7 @@ export class UserService {
   async getProfile(): Promise<Profile | undefined> {
     try {
       const actor = await this.getActor();
-      const res: Result_3 = await actor.getProfile();
+      const res: Result_4 = await actor.getProfile();
       if ("ok" in res) return res.ok;
       return undefined;
     } catch (error) {
@@ -56,6 +56,31 @@ export class UserService {
     } catch (error) {
       console.error("Error checking tag availability:", error);
       return false;
+    }
+  }
+  async isPlayerInGame(): Promise<{
+    success: boolean;
+    data?: { gameId: string; role: "host" | "player" };
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.isPlayerInGame();
+
+      if (result.length > 0 && result[0]) {
+        const gameInfo = result[0];
+        return {
+          success: true,
+          data: {
+            gameId: gameInfo.gameId,
+            role: "host" in gameInfo.role ? "host" : "player",
+          },
+        };
+      }
+      return { success: true, data: undefined };
+    } catch (e: any) {
+      console.error("isPlayerInGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
     }
   }
 }

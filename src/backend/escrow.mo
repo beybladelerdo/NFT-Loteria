@@ -1,4 +1,4 @@
-import Enums "enums";
+import T "types";
 module Escrow {
   public type Account = { owner : Principal; subaccount : ?[Nat8] };
 
@@ -59,7 +59,7 @@ public type Icrc1TransferResult = { #Ok : Nat; #Err : Icrc1TransferErr };
     icrc2_transfer_from : shared (TransferFromArgs) -> async TransferFromResult;
   };
 
-  public func ledgerOf(token : Enums.TokenType) : Escrow.Ledger {
+  public func ledgerOf(token : T.TokenType) : Escrow.Ledger {
     switch (token) {
       case (#ckBTC) actor ("mxzaz-hqaaa-aaaar-qaada-cai") : Escrow.Ledger;
       case (#gldt)  actor ("6c7su-kiaaa-aaaar-qaira-cai")  : Escrow.Ledger;

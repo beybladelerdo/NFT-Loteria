@@ -10,6 +10,7 @@
   import FlickeringGrid from "$lib/components/landing/FlickeringGrid.svelte";
   import { cardImages } from "$lib/data/gallery";
   import { TokenService } from "$lib/services/token-service";
+  import GameChat from "$lib/components/game/game-chat.svelte";
   import {
     type GameDetailData,
     type TablaInGame,
@@ -141,10 +142,12 @@
   let claimingTablaId = $state<number | null>(null);
   let inviteLink = $state("");
   let errorMessage = $state("");
+  let gameTerminated = $state(false);
   let potBalance = $state<bigint | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
   let showCardAnimation = $state(false);
   let isDrawing = $state(false);
+  let currentTablaIndex = $state(0);
   const hasCurrentCardOnTabla = $derived.by(() => {
     if (!currentCardId || !playerSummary()) return false;
     const summary = playerSummary();
@@ -335,8 +338,38 @@
     if (showSpinner) isLoading = true;
     try {
       const { detail } = await gameStore.fetchGameById(gameId);
-      gameDetail = detail ?? null;
-      errorMessage = detail ? "" : "Game not found.";
+
+      if (!detail) {
+        // Game not found - it was likely terminated by the host
+        if (!gameTerminated) {
+          gameTerminated = true;
+
+          // Stop polling
+          if (pollHandle) {
+            clearInterval(pollHandle);
+            pollHandle = null;
+          }
+
+          addToast({
+            message:
+              "This game has been terminated by the host. Your entry fee has been refunded (minus transaction fees).",
+            type: "info",
+            duration: 5000,
+          });
+
+          // Redirect to dashboard after a delay
+          setTimeout(() => {
+            goto("/dashboard");
+          }, 3000);
+        }
+
+        errorMessage = "Game was terminated.";
+        gameDetail = null;
+        return;
+      }
+
+      gameDetail = detail;
+      errorMessage = "";
     } catch (err) {
       errorMessage = "Failed to load game detail.";
     } finally {
@@ -503,6 +536,24 @@
   const hostFeePct = $derived(
     gameDetail ? Number(gameDetail.hostFeePercent ?? 0) : 0,
   );
+  const currentTabla = $derived.by(() => {
+    const tablas = playerSummary()?.tablas ?? [];
+    return tablas[currentTablaIndex] ?? null;
+  });
+
+  const totalTablas = $derived(playerSummary()?.tablas?.length ?? 0);
+
+  function goToNextTabla() {
+    if (currentTablaIndex < totalTablas - 1) {
+      currentTablaIndex++;
+    }
+  }
+
+  function goToPreviousTabla() {
+    if (currentTablaIndex > 0) {
+      currentTablaIndex--;
+    }
+  }
 
   // Use pre-claim balance if available (after win), otherwise current balance
   const estPot = $derived(preClaimPotBalance ?? potBalance ?? null);
@@ -571,15 +622,39 @@
     <div
       class="bg-gradient-to-b from-[#522785] to-[#3d1d63] border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,0.8)] p-10 text-center max-w-md"
     >
-      <h1 class="text-3xl font-black text-[#F4E04D] uppercase mb-4">
-        Game Not Found
-      </h1>
-      <p class="text-white font-bold mb-6">{errorMessage}</p>
+      {#if gameTerminated}
+        <div class="mb-6">
+          <span
+            class="bg-[#FF6EC7] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+          >
+            Game Terminated
+          </span>
+        </div>
+        <h1 class="text-3xl font-black text-[#F4E04D] uppercase mb-4">
+          Game Was Terminated
+        </h1>
+        <div
+          class="bg-[#1a0033] border-2 border-[#C9B5E8] p-4 mb-6 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+        >
+          <p class="text-white text-sm font-bold mb-2">
+            The host has terminated this game.
+          </p>
+          <p class="text-[#C9B5E8] text-xs">
+            Your entry fee has been refunded (minus transaction fees).
+            Redirecting you to the dashboard...
+          </p>
+        </div>
+      {:else}
+        <h1 class="text-3xl font-black text-[#F4E04D] uppercase mb-4">
+          Game Not Found
+        </h1>
+        <p class="text-white font-bold mb-6">{errorMessage}</p>
+      {/if}
       <button
         class="bg-[#F4E04D] text-[#1a0033] px-6 py-3 font-black uppercase border-4 border-black hover:bg-[#fff27d] transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)]"
-        onclick={() => goto("/join-game")}
+        onclick={() => goto("/dashboard")}
       >
-        Browse Games
+        Go to Dashboard
       </button>
     </div>
   </div>
@@ -757,7 +832,7 @@
                 </div>
               {:else}
                 <div class="space-y-3">
-                  {#each otherPlayersStats as stat}
+                  {#each playersStats as stat}
                     <div
                       class="bg-[#1a0033] border-2 border-black px-3 py-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center justify-between gap-4"
                     >
@@ -766,16 +841,38 @@
                           {playerName(stat.player)}
                         </p>
                         <p class="text-xs text-[#C9B5E8] font-bold">
-                          Marks: {stat.marks} · Tablas: {stat.tablas}
+                          Tablas: {stat.tablas} · Marks: {stat.marks}
                         </p>
                       </div>
-                      <span
-                        class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-2 py-1 text-xs font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+                      <button
+                        class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-2 py-1 text-xs font-black uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-[#fff27d] transition-all relative group"
+                        onclick={() => {
+                          navigator.clipboard.writeText(
+                            stat.player.principal.toText(),
+                          );
+                          addToast({
+                            message: "Principal copied!",
+                            type: "success",
+                            duration: 2000,
+                          });
+                        }}
+                        title="Click to copy full principal"
                       >
                         #{shortPrincipal(stat.player.principal.toText())}
-                      </span>
+
+                        <!-- Tooltip on hover -->
+                        <span
+                          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#1a0033] border-2 border-[#F4E04D] text-[#F4E04D] text-[10px] font-mono rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-[4px_4px_0px_rgba(0,0,0,1)] z-10"
+                        >
+                          {stat.player.principal.toText()}
+                          <span class="block text-[8px] text-[#C9B5E8] mt-1"
+                            >Click to copy</span
+                          >
+                        </span>
+                      </button>
                     </div>
                   {/each}
+                  <GameChat gameId={gameDetail.id} />
                 </div>
               {/if}
             </div>
@@ -848,12 +945,6 @@
                   >
                     Refresh
                   </button>
-                  <button
-                    class="bg-white text-[#1a0033] border-4 border-black px-4 py-2 font-black uppercase text-xs shadow-[4px_4px_0_rgba(0,0,0,1)] hover:bg-[#C9B5E8]"
-                    onclick={() => goto(`/game/host/${gameDetail?.id}`)}
-                  >
-                    View Host Screen
-                  </button>
                   <AudioToggle />
                 </div>
               </div>
@@ -919,10 +1010,48 @@
                 </div>
               </div>
             </div>
+            {#if totalTablas > 1}
+              <div
+                class="mb-4 flex items-center justify-between bg-gradient-to-b from-[#522785] to-[#3d1d63] p-4 border-4 border-black shadow-[4px_4px_0_rgba(0,0,0,1)]"
+              >
+                <div
+                  class="w-full flex items-center justify-between gap-2 sm:gap-4"
+                >
+                  <button
+                    onclick={goToPreviousTabla}
+                    disabled={currentTablaIndex === 0}
+                    class="bg-[#C9B5E8] text-[#1a0033] border-4 border-black px-4 sm:px-6 py-3 font-black uppercase text-xl sm:text-2xl shadow-[4px_4px_0_rgba(0,0,0,1)] hover:bg-[#d9c9f0] hover:scale-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 w-16 sm:w-24 flex items-center justify-center"
+                  >
+                    ◄
+                  </button>
 
-            {#each playerSummary()?.tablas ?? [] as tabla (tabla.tablaId)}
+                  <div class="text-center flex-1">
+                    <p
+                      class="text-[#F4E04D] font-black uppercase text-xs sm:text-xl leading-tight whitespace-nowrap"
+                      style="text-shadow: 2px 2px 0px #000;"
+                    >
+                      Tabla {currentTablaIndex + 1} of {totalTablas}
+                    </p>
+                    <p
+                      class="text-[#C9B5E8] text-[9px] sm:text-xs font-bold uppercase mt-1 hidden sm:block"
+                    >
+                      Use arrows to switch between your tablas
+                    </p>
+                  </div>
+
+                  <button
+                    onclick={goToNextTabla}
+                    disabled={currentTablaIndex === totalTablas - 1}
+                    class="bg-[#C9B5E8] text-[#1a0033] border-4 border-black px-4 sm:px-6 py-3 font-black uppercase text-xl sm:text-2xl shadow-[4px_4px_0_rgba(0,0,0,1)] hover:bg-[#d9c9f0] hover:scale-105 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100 w-16 sm:w-24 flex items-center justify-center"
+                  >
+                    ►
+                  </button>
+                </div>
+              </div>
+            {/if}
+            {#if currentTabla}
               {@const r =
-                rarityById[tabla.tablaId] ?? ({ common: null } as const)}
+                rarityById[currentTabla.tablaId] ?? ({ common: null } as const)}
 
               <div
                 class={`relative rounded-2xl overflow-hidden border-8 border-black shadow-[12px_12px_0_rgba(0,0,0,.9)]
@@ -939,7 +1068,7 @@
                         class="text-2xl font-black text-white uppercase mt-2"
                         style="text-shadow:2px 2px 0 #000"
                       >
-                        Tabla #{tabla.tablaId}
+                        Tabla #{currentTabla.tablaId}
                       </p>
                     </div>
 
@@ -953,7 +1082,7 @@
                         class="text-[11px] text-[#C9B5E8] font-black uppercase"
                       >
                         Marks on this tabla: <span class="text-[#F4E04D]"
-                          >{marksByTabla.get(tabla.tablaId) ?? 0}</span
+                          >{marksByTabla.get(currentTabla.tablaId) ?? 0}</span
                         >
                       </div>
                     </div>
@@ -963,13 +1092,13 @@
                     class={`rounded-xl border-4 border-[#35125a] bg-[#1a0033]/85 p-3 ${panelRing(r)}`}
                   >
                     <div class="grid grid-cols-4 gap-2">
-                      {#each tablaGrid(tabla) as cell (cell.row * 10 + cell.col)}
+                      {#each tablaGrid(currentTabla) as cell (cell.row * 10 + cell.col)}
                         <button
                           class={`relative border-2 border-black bg-[#1a0033] shadow-[3px_3px_0_rgba(0,0,0,1)] overflow-hidden transition
                       ${canMark(cell) ? "hover:-translate-y-1 hover:shadow-[4px_4px_0_rgba(0,0,0,1)]" : "opacity-60 cursor-not-allowed"}
                       ${cell.isDrawn ? "border-[#F4E04D]" : "border-[#35125a]"} ${cell.isMarked ? "ring-4 ring-[#29ABE2]" : ""}`}
                           disabled={!canMark(cell)}
-                          onclick={() => handleMark(tabla.tablaId, cell)}
+                          onclick={() => handleMark(currentTabla.tablaId, cell)}
                         >
                           <div
                             class="relative w-full overflow-hidden"
@@ -1014,23 +1143,31 @@
                     </p>
                     <button
                       class="bg-[#F4E04D] text-[#1a0033] border-4 border-black px-4 py-2 font-black uppercase text-xs shadow-[4px_4px_0_rgba(0,0,0,1)] hover:bg-[#fff27d] disabled:bg-gray-500 disabled:text-gray-200"
-                      disabled={claimingTablaId === tabla.tablaId ||
+                      disabled={claimingTablaId === currentTabla.tablaId ||
                         !isGameActive}
-                      onclick={() => handleClaimWin(tabla.tablaId)}
+                      onclick={() => handleClaimWin(currentTabla.tablaId)}
                     >
-                      {claimingTablaId === tabla.tablaId
+                      {claimingTablaId === currentTabla.tablaId
                         ? "Claiming..."
                         : "Claim Win"}
                     </button>
                   </div>
                 </div>
               </div>
-            {/each}
+            {:else}
+              <div
+                class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 border-4 border-black text-center"
+              >
+                <p class="text-white font-bold uppercase">No tablas found</p>
+              </div>
+            {/if}
 
             <div
               class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,0.8)]"
             >
-              <div class="mb-4">
+              <GameChat gameId={gameDetail.id} />
+
+              <div class="mt-6 mb-4">
                 <span
                   class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_rgba(0,0,0,1)]"
                 >

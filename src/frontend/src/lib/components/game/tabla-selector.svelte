@@ -35,16 +35,19 @@
   }
 
   const MAX_TABLAS = 4;
+  const PREFERRED_TABLAS = [78, 83, 132, 20, 68, 65, 72, 117, 87, 61];
 
   let tablas = $state<TablaInfo[]>([]);
+  let showLuckyInfo = $state(false);
   let isLoading = $state(true);
   let error = $state("");
+  let showInfo = $state(false);
 
   type SortKey = "id" | "rarity" | "token";
   let sortBy = $state<SortKey>("id");
   let sortDir = $state<"asc" | "desc">("asc");
   let page = $state(1);
-  let pageSize = $state(8);
+  let pageSize = $state("8");
 
   const rarityRank = (r: Rarity) =>
     "legendary" in r
@@ -78,7 +81,7 @@
   );
 
   const totalPages = $derived(
-    Math.max(1, Math.ceil(sortedTablas.length / pageSize)),
+    Math.max(1, Math.ceil(sortedTablas.length / Number(pageSize))),
   );
 
   $effect(() => {
@@ -87,13 +90,49 @@
   });
 
   const visible = $derived(
-    sortedTablas.slice((page - 1) * pageSize, page * pageSize),
+    sortedTablas.slice((page - 1) * Number(pageSize), page * Number(pageSize)),
   );
 
   onMount(async () => {
     await loadTablas();
   });
+  function makeMeLucky() {
+    if (tablas.length === 0) return;
 
+    selectedTablaIds = [];
+
+    const availableTablas = tablas.map((t) => t.id);
+
+    const availablePreferred = PREFERRED_TABLAS.filter((id) =>
+      availableTablas.includes(id),
+    );
+    const availableOthers = availableTablas.filter(
+      (id) => !PREFERRED_TABLAS.includes(id),
+    );
+
+    const count = Math.floor(Math.random() * MAX_TABLAS) + 1;
+    const selected: number[] = [];
+
+    const shuffledPreferred = [...availablePreferred].sort(
+      () => Math.random() - 0.5,
+    );
+    for (let i = 0; i < Math.min(count, shuffledPreferred.length); i++) {
+      selected.push(shuffledPreferred[i]);
+    }
+
+    if (selected.length < count) {
+      const shuffledOthers = [...availableOthers].sort(
+        () => Math.random() - 0.5,
+      );
+      const needed = count - selected.length;
+      for (let i = 0; i < Math.min(needed, shuffledOthers.length); i++) {
+        selected.push(shuffledOthers[i]);
+      }
+    }
+
+    selectedTablaIds = selected;
+    playSfx("select_common");
+  }
   async function loadTablas() {
     isLoading = true;
     error = "";
@@ -125,18 +164,18 @@
 
   function handleSelect(tabla: TablaInfo) {
     const isSelected = selectedTablaIds.includes(tabla.id);
-    
+
     if (isSelected) {
-      selectedTablaIds = selectedTablaIds.filter(id => id !== tabla.id);
+      selectedTablaIds = selectedTablaIds.filter((id) => id !== tabla.id);
       playBlip();
     } else {
       if (selectedTablaIds.length >= MAX_TABLAS) {
         error = `Maximum ${MAX_TABLAS} tablas allowed`;
-        setTimeout(() => error = "", 3000);
+        setTimeout(() => (error = ""), 3000);
         return;
       }
       selectedTablaIds = [...selectedTablaIds, tabla.id];
-      
+
       if ("legendary" in tabla.rarity) {
         playSfx("select_legendary");
       } else if ("epic" in tabla.rarity) {
@@ -151,7 +190,7 @@
     }
 
     const totalFee = selectedTablaIds.reduce((sum, id) => {
-      const t = tablas.find(t => t.id === id);
+      const t = tablas.find((t) => t.id === id);
       return t ? sum + t.rentalFee : sum;
     }, 0n);
 
@@ -166,7 +205,7 @@
     if ("legendary" in r) return "#FFD700";
     return "#C9B5E8";
   }
-  
+
   function getRarityText(r: Rarity): string {
     if ("common" in r) return "COMMON";
     if ("uncommon" in r) return "UNCOMMON";
@@ -196,11 +235,94 @@
     >
       Select Tabla
     </span>
-    <span
-      class="bg-[#FF6EC7] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
-    >
-      {selectedTablaIds.length}/{MAX_TABLAS} SELECTED
-    </span>
+    <div class="flex items-center gap-2">
+      <span
+        class="bg-[#FF6EC7] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+      >
+        {selectedTablaIds.length}/{MAX_TABLAS} SELECTED
+      </span>
+      <button
+        onclick={() => (showInfo = true)}
+        class="bg-[#F4E04D] text-[#1a0033] border-2 border-black w-6 h-6 rounded-full font-black text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+      >
+        ?
+      </button>
+    </div>
+
+    {#if showInfo}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+        onclick={() => (showInfo = false)}
+      >
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          class="bg-gradient-to-b from-[#522785] to-[#3d1d63] border-4 border-[#F4E04D] p-6 max-w-lg shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
+          onclick={(e) => e.stopPropagation()}
+        >
+          <div class="flex items-start justify-between mb-4">
+            <h3
+              class="text-xl font-black text-[#F4E04D] uppercase"
+              style="text-shadow: 2px 2px 0px #000;"
+            >
+              How It Works
+            </h3>
+            <button
+              onclick={() => (showInfo = false)}
+              class="bg-[#FF6EC7] text-[#1a0033] border-2 border-black w-8 h-8 rounded-full font-black text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="space-y-3 text-white text-sm font-bold leading-relaxed">
+            <div class="flex gap-3">
+              <span class="text-[#F4E04D] text-xl">•</span>
+              <p>
+                You need at least <span class="text-[#F4E04D]">1 tabla</span> to
+                enter the game
+              </p>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="text-[#F4E04D] text-xl">•</span>
+              <p>
+                You can select up to <span class="text-[#F4E04D]">4 tablas</span
+                > per game
+              </p>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="text-[#F4E04D] text-xl">•</span>
+              <p>
+                Each tabla requires an <span class="text-[#F4E04D]"
+                  >additional entry fee</span
+                >
+              </p>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="text-[#FF6EC7] text-xl">•</span>
+              <p>
+                More tablas = <span class="text-[#FF6EC7]"
+                  >higher chance of winning!</span
+                >
+              </p>
+            </div>
+
+            <div class="flex gap-3">
+              <span class="text-[#C9B5E8] text-xl">•</span>
+              <p>
+                But you'll need to <span class="text-[#C9B5E8]"
+                  >pay closer attention</span
+                > to match characters across multiple tablas
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <h3
@@ -210,32 +332,97 @@
     CHOOSE YOUR TABLAS
   </h3>
 
-  <div class="flex flex-wrap items-center gap-2 mb-3">
-    <label class="text-xs font-bold text-white">Sort by</label>
-    <select
-      bind:value={sortBy}
-      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
+  <div class="mb-3">
+    <!-- Sort / Page size row (forced single line, scrollable on tiny screens) -->
+    <div
+      class="flex items-center gap-1 text-[10px] whitespace-nowrap flex-nowrap overflow-x-auto pb-1"
     >
-      <option value="id">ID</option>
-      <option value="rarity">Rarity</option>
-      <option value="token">Token</option>
-    </select>
-    <select
-      bind:value={sortDir}
-      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
-    >
-      <option value="asc">Asc</option>
-      <option value="desc">Desc</option>
-    </select>
+      <!-- Sort by -->
+      <!-- svelte-ignore a11y_label_has_associated_control -->
+      <label class="font-bold text-white mr-1">Sort by</label>
 
-    <label class="ml-4 text-xs font-bold text-white">Page size</label>
-    <select
-      bind:value={pageSize}
-      class="px-2 py-1 text-xs border-2 border-black bg-white text-black"
-    >
-      <option>4</option><option>8</option><option>12</option><option>16</option>
-    </select>
+      <select
+        bind:value={sortBy}
+        class="px-1.5 py-1 text-[10px] border-2 border-black bg-white text-black"
+      >
+        <option value="id">ID</option>
+        <option value="rarity">Rarity</option>
+      </select>
+
+      <select
+        bind:value={sortDir}
+        class="px-1.5 py-1 text-[10px] border-2 border-black bg-white text-black ml-1"
+      >
+        <option value="asc">Asc</option>
+        <option value="desc">Desc</option>
+      </select>
+
+      <!-- Page size -->
+      <!-- svelte-ignore a11y_label_has_associated_control -->
+      <label class="font-bold text-white ml-2 mr-1">Page size</label>
+
+      <select
+        bind:value={pageSize}
+        class="px-1.5 py-1 text-[10px] border-2 border-black bg-white text-black"
+      >
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="12">12</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+
+    <!-- Lucky Button with info icon -->
+    <div class="flex items-center gap-2 mt-2">
+      <button
+        onclick={makeMeLucky}
+        disabled={tablas.length === 0}
+        class="flex-1 bg-[#FF6EC7] text-[#1a0033] border-2 border-black px-4 py-2 font-bold uppercase text-xs shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ff8fd9] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        I'M FEELING LUCKY
+      </button>
+      <button
+        onclick={() => (showLuckyInfo = !showLuckyInfo)}
+        class="bg-[#F4E04D] text-[#1a0033] border-2 border-black w-8 h-8 rounded-full font-black text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+      >
+        ?
+      </button>
+    </div>
   </div>
+
+  <!-- Lucky info popup (add this where you have the other popup) -->
+  {#if showLuckyInfo}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onclick={() => (showLuckyInfo = false)}
+    >
+      <div
+        class="bg-gradient-to-b from-[#522785] to-[#3d1d63] border-4 border-[#F4E04D] p-6 max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
+        onclick={(e) => e.stopPropagation()}
+      >
+        <div class="flex items-start justify-between mb-4">
+          <h3
+            class="text-xl font-black text-[#F4E04D] uppercase"
+            style="text-shadow: 2px 2px 0px #000;"
+          >
+            Feeling Lucky?
+          </h3>
+          <button
+            onclick={() => (showLuckyInfo = false)}
+            class="bg-[#FF6EC7] text-[#1a0033] border-2 border-black w-8 h-8 rounded-full font-black text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all"
+          >
+            ×
+          </button>
+        </div>
+
+        <p class="text-white text-sm font-bold leading-relaxed">
+          Randomly select 1-4 tablas !
+        </p>
+      </div>
+    </div>
+  {/if}
 
   {#if isLoading}
     <div
@@ -279,7 +466,9 @@
       {#each visible as tabla}
         <button
           onclick={() => handleSelect(tabla)}
-          class="group relative bg-[#1a0033] border-4 border-black p-2 transition-all {selectedTablaIds.includes(tabla.id)
+          class="group relative bg-[#1a0033] border-4 border-black p-2 transition-all {selectedTablaIds.includes(
+            tabla.id,
+          )
             ? 'ring-4 ring-[#F4E04D] shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]'
             : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'}"
         >
@@ -356,7 +545,9 @@
         class="mt-4 bg-[#1a0033] border-2 border-[#F4E04D] p-3 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
       >
         <p class="text-[#F4E04D] font-bold text-sm text-center uppercase">
-          ✓ {selectedTablaIds.length} TABLA{selectedTablaIds.length > 1 ? 'S' : ''} SELECTED: #{selectedTablaIds.join(', #')}
+          ✓ {selectedTablaIds.length} TABLA{selectedTablaIds.length > 1
+            ? "S"
+            : ""} SELECTED: #{selectedTablaIds.join(", #")}
         </p>
       </div>
     {/if}

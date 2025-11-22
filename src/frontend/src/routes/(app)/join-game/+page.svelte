@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { page } from "$app/stores";
+  import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { addToast } from "$lib/stores/toasts-store";
   import { authStore } from "$lib/stores/auth-store";
@@ -109,13 +109,13 @@
   const currentTokenSymbol = $derived(currentTokenConfig?.symbol ?? null);
 
   const currentEntryFee = $derived.by(() => {
-  const baseFee = selectedDetail 
-    ? BigInt(selectedDetail.entryFee) 
-    : selectedGame 
-      ? BigInt(selectedGame.entryFee) 
-      : 0n;
-  return baseFee * BigInt(selectedTablaIds.length || 1);
-});
+    const baseFee = selectedDetail
+      ? BigInt(selectedDetail.entryFee)
+      : selectedGame
+        ? BigInt(selectedGame.entryFee)
+        : 0n;
+    return baseFee * BigInt(selectedTablaIds.length || 1);
+  });
 
   const currentLedgerFee = $derived.by(() => {
     const symbol = currentTokenSymbol;
@@ -129,7 +129,7 @@
     return currentTokenConfig.balance >= totalApprovalAmount;
   });
 
-  const defaultGameId = $derived($page.url.searchParams.get("gameId"));
+  const defaultGameId = $derived(page.url.searchParams.get("gameId"));
 
   // Store subscription
   let unsubscribeToken: (() => void) | null = null;
@@ -386,8 +386,6 @@
       squareSize={4}
       gridGap={6}
       color="rgba(196, 154, 250, 0.5)"
-      width={window.innerWidth}
-      height={window.innerHeight}
     />
     <div class="relative z-10 max-w-7xl mx-auto px-4 py-8">
       <div

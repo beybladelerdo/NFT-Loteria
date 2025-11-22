@@ -6,8 +6,8 @@
   export let gridGap: number = 6;
   export let flickerChance: number = 0.3;
   export let color = "rgb(0, 0, 0)";
-  export let width: number;
-  export let height: number;
+  export let width: number | null = null;
+  export let height: number | null = null;
   let className = "";
   export { className as class };
 
@@ -35,8 +35,10 @@
   memoizedColor = toRGBA(color);
 
   function setupCanvas() {
-    const canvasWidth = width || canvas.clientWidth;
-    const canvasHeight = height || canvas.clientHeight;
+    const canvasWidth =
+      typeof width === "number" && width > 0 ? width : canvas.clientWidth;
+    const canvasHeight =
+      typeof height === "number" && height > 0 ? height : canvas.clientHeight;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvasWidth * dpr;
     canvas.height = canvasHeight * dpr;
@@ -164,5 +166,7 @@
 <canvas
   bind:this={canvas}
   class="size-full pointer-events-none {className}"
-  style="width: {width || '100%'}; height: {height || '100%'};"
+  style="width: {width ? `${width}px` : '100%'}; height: {height
+    ? `${height}px`
+    : '100%'};"
 />

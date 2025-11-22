@@ -302,18 +302,132 @@ export const gameStore = {
     }
   },
   async getAvailableTablasForGame(gameId: string) {
-  isLoading = true;
-  try {
-    const result = await new GameService().getAvailableTablasForGame(gameId);
-    if (result.success) {
-      return { success: true, tablas: result.tablas };
+    isLoading = true;
+    try {
+      const result = await new GameService().getAvailableTablasForGame(gameId);
+      if (result.success) {
+        return { success: true, tablas: result.tablas };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error fetching available tablas for game:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
     }
-    return { success: false, error: result.error };
-  } catch (error: any) {
-    console.error("Error fetching available tablas for game:", error);
-    return { success: false, error: error?.message ?? String(error) };
-  } finally {
-    isLoading = false;
-  }
-}
+  },
+  async terminateGame(gameId: string) {
+    isLoading = true;
+    try {
+      const result = await new GameService().terminateGame(gameId);
+      if (result.success) {
+        return { success: true, message: result.message };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error terminating game:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
+    }
+  },
+  async getPlatformVolume() {
+    try {
+      const result = await new GameService().getPlatformVolume();
+      if (result.success && result.data) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error fetching platform volume:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+
+  async get24hVolume() {
+    try {
+      const result = await new GameService().get24hVolume();
+      if (result.success && result.data) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error fetching 24h volume:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+
+  async getLargestPots() {
+    try {
+      const result = await new GameService().getLargestPots();
+      if (result.success && result.data) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error fetching largest pots:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async retryFailedClaim(gameId: string) {
+    try {
+      const result = await new GameService().retryFailedClaim(gameId);
+      return result;
+    } catch (error: any) {
+      console.error("Error retrying failed claim:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async getFailedClaims() {
+    try {
+      const result = await new GameService().getFailedClaims();
+      if (result.success && result.data) {
+        return {
+          success: true,
+          data: result.data,
+        };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error fetching failed claims:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async getRecentGamesForPlayer(limit: number = 10) {
+    try {
+      const result = await new GameService().getRecentGamesForPlayer(limit);
+      return result;
+    } catch (error: any) {
+      console.error("Error fetching recent games:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+  async sendChatMessage(gameId: string, message: string) {
+    try {
+      const result = await new GameService().sendChatMessage(gameId, message);
+      return result;
+    } catch (error: any) {
+      console.error("Error sending chat message:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+
+  async getChatMessages(gameId: string) {
+    try {
+      const result = await new GameService().getChatMessages(gameId);
+      return result;
+    } catch (error: any) {
+      console.error("Error fetching chat messages:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
 };

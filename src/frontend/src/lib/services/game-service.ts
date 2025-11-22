@@ -17,6 +17,7 @@ import type {
   Result,
   Result_1,
   Result_2,
+  Result_3,
   Result_5,
   Result_6,
   Result_7,
@@ -99,7 +100,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetOpenGames = { page: BigInt(page) };
-      const res: Result_5 = await actor.getOpenGames(dto);
+      const res: Result_6 = await actor.getOpenGames(dto);
       if ("err" in res) return [];
       return res.ok.openGames;
     } catch (e) {
@@ -112,7 +113,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetActiveGames = { page: BigInt(page) };
-      const res: Result_10 = await actor.getActiveGames(dto);
+      const res: Result_11 = await actor.getActiveGames(dto);
       if ("err" in res) return [];
       return res.ok.activeGames;
     } catch (e) {
@@ -125,7 +126,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_7 = await actor.getGame(dto);
+      const res: Result_8 = await actor.getGame(dto);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
@@ -137,7 +138,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_6 = await actor.getGameDetail(dto);
+      const res: Result_7 = await actor.getGameDetail(dto);
       if ("err" in res) return null;
       return res.ok;
     } catch (e) {
@@ -171,7 +172,7 @@ export class GameService {
         };
       }
       const actor = await this.getActor();
-      const res: Result_12 = await actor.createGame({
+      const res: Result_1 = await actor.createGame({
         name: params.name,
         mode: toMode(params.mode),
         tokenType: toToken(params.tokenType),
@@ -233,7 +234,7 @@ export class GameService {
   ): Promise<{ success: boolean; cardId?: number; error?: string }> {
     try {
       const actor = await this.getActor();
-      const res: Result_11 = await actor.drawCard(gameId);
+      const res: Result_12 = await actor.drawCard(gameId);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true, cardId: Number(res.ok) };
     } catch (e: any) {
@@ -245,7 +246,7 @@ export class GameService {
   async getDrawHistory(gameId: string): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_8 = await actor.getDrawHistory({ gameId });
+      const res: Result_9 = await actor.getDrawHistory({ gameId });
       if ("err" in res) return [];
       return Array.from(res.ok as ArrayLike<number>, Number);
     } catch (e) {
@@ -274,7 +275,7 @@ export class GameService {
   async getAvailableTablas(): Promise<TablaInfo[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_9 = await actor.getAvailableTablas();
+      const res: Result_10 = await actor.getAvailableTablas();
       if ("err" in res) return [];
       return res.ok;
     } catch (e) {
@@ -286,7 +287,7 @@ export class GameService {
   async getTabla(tablaId: number): Promise<TablaInfo | null> {
     try {
       const actor = await this.getActor();
-      const res: Result_2 = await actor.getTabla(tablaId);
+      const res: Result_3 = await actor.getTabla(tablaId);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
@@ -298,7 +299,7 @@ export class GameService {
   async getTablaCards(tablaId: number): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_1 = await actor.getTablaCards(tablaId);
+      const res: Result_2 = await actor.getTablaCards(tablaId);
       if ("err" in res) return [];
       return res.ok.map((n) => Number(n));
     } catch (e) {
@@ -424,17 +425,208 @@ export class GameService {
     }
   }
   async getAvailableTablasForGame(
-  gameId: string,
-): Promise<{ success: boolean; tablas?: any[]; error?: string }> {
-  try {
-    const actor = await this.getActor();
-    const res:Result_9 = await actor.getAvailableTablasForGame(gameId);
-    if ("err" in res) return { success: false, error: res.err };
-    return { success: true, tablas: res.ok };
-  } catch (e: any) {
-    console.error("getAvailableTablasForGame failed:", e);
-    return { success: false, error: e?.message ?? String(e) };
+    gameId: string,
+  ): Promise<{ success: boolean; tablas?: any[]; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result_10 = await actor.getAvailableTablasForGame(gameId);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true, tablas: res.ok };
+    } catch (e: any) {
+      console.error("getAvailableTablasForGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
   }
-}
+  async terminateGame(
+    gameId: string,
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result_1 = await actor.terminateGame(gameId);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true, message: res.ok };
+    } catch (e: any) {
+      console.error("terminateGame failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async getPlatformVolume(): Promise<{
+    success: boolean;
+    data?: { totalICP: bigint; totalCkBTC: bigint; totalGLDT: bigint };
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.getPlatformVolume();
+      return {
+        success: true,
+        data: {
+          totalICP: result.totalICP,
+          totalCkBTC: result.totalCkBTC,
+          totalGLDT: result.totalGLDT,
+        },
+      };
+    } catch (e: any) {
+      console.error("getPlatformVolume failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
 
+  async get24hVolume(): Promise<{
+    success: boolean;
+    data?: { totalICP: bigint; totalCkBTC: bigint; totalGLDT: bigint };
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.get24hVolume();
+      return {
+        success: true,
+        data: {
+          totalICP: result.totalICP,
+          totalCkBTC: result.totalCkBTC,
+          totalGLDT: result.totalGLDT,
+        },
+      };
+    } catch (e: any) {
+      console.error("get24hVolume failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async getLargestPots(): Promise<{
+    success: boolean;
+    data?: { totalICP: bigint; totalCkBTC: bigint; totalGLDT: bigint };
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.getLargestPots();
+      return {
+        success: true,
+        data: {
+          totalICP: result.totalICP,
+          totalCkBTC: result.totalCkBTC,
+          totalGLDT: result.totalGLDT,
+        },
+      };
+    } catch (e: any) {
+      console.error("getLargestPots failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async retryFailedClaim(gameId: string): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.retryFailedClaim(gameId);
+      if ("ok" in result) {
+        return { success: true };
+      }
+      return { success: false, error: result.err };
+    } catch (e: any) {
+      console.error("retryFailedClaim failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async getFailedClaims(): Promise<{
+    success: boolean;
+    data?: Array<{
+      gameId: string;
+      tablaId: number;
+      winnerAmount: bigint;
+      hostFee: bigint;
+      tablaOwnerFee: bigint;
+      devFee: bigint;
+      tokenType: { ICP: null } | { ckBTC: null } | { gldt: null };
+      failedAt: bigint;
+      lastError: string;
+      payoutStatus: {
+        devFeePaid: boolean;
+        tablaOwnerPaid: boolean;
+        winnerPaid: boolean;
+        hostPaid: boolean;
+      };
+    }>;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.getFailedClaims();
+      return { success: true, data: result };
+    } catch (e: any) {
+      console.error("getFailedClaims failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async getRecentGamesForPlayer(limit: number = 10): Promise<{
+    success: boolean;
+    data?: Array<{
+      gameId: string;
+      mode: { line: null } | { blackout: null };
+      tokenType: { ICP: null } | { ckBTC: null } | { gldt: null };
+      entryFee: bigint;
+      status:
+        | { open: null }
+        | { active: null }
+        | { completed: null }
+        | { cancelled: null }
+        | { lobby: null };
+      winner: [] | [Principal];
+      createdAt: bigint;
+      isWinner: boolean;
+      isHost: boolean;
+    }>;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.getRecentGamesForPlayer(BigInt(limit));
+      return { success: true, data: result };
+    } catch (e: any) {
+      console.error("getRecentGamesForPlayer failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async sendChatMessage(
+    gameId: string,
+    message: string,
+  ): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.sendChatMessage(gameId, message);
+      if ("ok" in result) {
+        return { success: true };
+      }
+      return { success: false, error: result.err };
+    } catch (e: any) {
+      console.error("sendChatMessage failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+
+  async getChatMessages(gameId: string): Promise<{
+    success: boolean;
+    data?: Array<{
+      sender: Principal;
+      username: string;
+      message: string;
+      timestamp: bigint;
+    }>;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getActor();
+      const result = await actor.getChatMessages(gameId);
+      return { success: true, data: result };
+    } catch (e: any) {
+      console.error("getChatMessages failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
 }

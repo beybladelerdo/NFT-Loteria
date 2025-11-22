@@ -2,6 +2,8 @@
   import { onMount, type Snippet } from "svelte";
   import { fade } from "svelte/transition";
   import { browser } from "$app/environment";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { initAuthWorker } from "$lib/services/worker.auth.services";
   import { authStore, type AuthStoreData } from "$lib/stores/auth-store";
   import {
@@ -17,6 +19,7 @@
   import { get } from "svelte/store";
   import Header from "$lib/components/shared/header.svelte";
   import Sidebar from "$lib/components/shared/sidebar.svelte";
+  import GameReturnModal from "$lib/components/game/return-modal.svelte";
   import "../../app.css";
 
   interface Props {
@@ -31,7 +34,10 @@
   let hasProfile = $state(false);
   let user: Profile | undefined = $state(undefined);
   let isSigningIn = $state(false);
-  let hasCheckedProfile = $state(false); // Add this flag
+  let hasCheckedProfile = $state(false);
+  let showGameReturnPrompt = $state(false);
+  let activeGame: { gameId: string; role: "host" | "player" } | null =
+    $state(null);
 
   const init = async () => {
     if (!browser) return;
@@ -60,7 +66,6 @@
 
   onMount(async () => {
     if (browser) document.querySelector("#app-spinner")?.remove();
-
     await init();
     worker = await initAuthWorker();
 
@@ -78,23 +83,27 @@
   }
 
   $effect(() => {
-    // Only check profile once when signed in
     if (browser && $authSignedInStore && !hasCheckedProfile) {
       checkProfile();
     }
   });
 
+  $effect(() => {
+    if (browser && $authSignedInStore && hasProfile) {
+      const currentPath = page.url.pathname;
+      checkGameStatus(currentPath);
+    }
+  });
+
   async function checkProfile() {
-    if (hasCheckedProfile) return; // Prevent duplicate calls
+    if (hasCheckedProfile) return;
 
     try {
       isLoading = true;
       console.log("🔍 Checking for existing profile...");
-
       user = await userStore.getProfile();
       hasProfile = user !== undefined;
       hasCheckedProfile = true;
-
       console.log(
         "✅ Profile check complete:",
         hasProfile ? "Found" : "Not found",
@@ -108,9 +117,70 @@
     }
   }
 
+  async function checkGameStatus(currentPath: string) {
+    try {
+      console.log("🎮 Checking if user is in a game...");
+      const result = await userStore.checkIfInGame();
+
+      if (result.success && result.inGame && result.gameId && result.role) {
+        activeGame = { gameId: result.gameId, role: result.role };
+
+        const baseHostPath = `/game/host/${result.gameId}`;
+        const basePlayPath = `/game/play/${result.gameId}`;
+
+        const isOnHostPathForThisGame =
+          currentPath === baseHostPath ||
+          currentPath.startsWith(baseHostPath + "/");
+
+        const isOnPlayPathForThisGame =
+          currentPath === basePlayPath ||
+          currentPath.startsWith(basePlayPath + "/");
+
+        const isInCorrectPlace =
+          (result.role === "host" && isOnHostPathForThisGame) ||
+          (result.role === "player" && isOnPlayPathForThisGame);
+
+        showGameReturnPrompt = !isInCorrectPlace;
+
+        console.log(
+          "✅ User is in game:",
+          result.gameId,
+          "as",
+          result.role,
+          "currentPath:",
+          currentPath,
+          "isInCorrectPlace:",
+          isInCorrectPlace,
+        );
+      } else {
+        activeGame = null;
+        showGameReturnPrompt = false;
+        console.log("✅ User is not in any active game");
+      }
+    } catch (err) {
+      console.error("Error checking game status:", err);
+      showGameReturnPrompt = false;
+    }
+  }
+
+  function returnToGame() {
+    if (activeGame) {
+      const route =
+        activeGame.role === "host"
+          ? `/game/host/${activeGame.gameId}`
+          : `/game/play/${activeGame.gameId}`;
+      showGameReturnPrompt = false;
+      goto(route);
+    }
+  }
+
+  function dismissGamePrompt() {
+    showGameReturnPrompt = false;
+  }
+
   async function userCreated() {
     console.log("🎉 User created, refreshing profile...");
-    hasCheckedProfile = false; // Reset the flag
+    hasCheckedProfile = false;
     await checkProfile();
   }
 </script>
@@ -126,6 +196,12 @@
     <Header {toggleMenu} {user} />
     <Sidebar {toggleMenu} {isMenuOpen} {user} />
     {@render children()}
+    <GameReturnModal
+      open={showGameReturnPrompt}
+      {activeGame}
+      onReturn={returnToGame}
+      onDismiss={dismissGamePrompt}
+    />
   {:else}
     <SetUsername {userCreated} />
   {/if}

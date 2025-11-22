@@ -1,16 +1,114 @@
 <script lang="ts">
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import Marquee from "$lib/components/landing/SlideCarousel.svelte";
   import FlickeringGrid from "$lib/components/landing/FlickeringGrid.svelte";
+  import NumberTicker from "$lib/components/landing/NumberTicker.svelte";
   import { cardImages, tablaImages } from "$lib/data/gallery";
+  import { gameStore } from "$lib/stores/game-store.svelte";
 
   const playNow = () => goto("/join-game");
   const hostGame = () => goto("/host-game");
   const dashboard = () => goto("/dashboard");
+  const buyTabla = () =>
+    window.open("https://dgdg.app/nfts/collections/nft_loteria", "_blank");
+
+  let volume24h = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
+  let prevVolume24h = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
+  let volumeChange = $state({ icp: 0, ckbtc: 0, gldt: 0 });
+  let largestPots = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
+  let isLoading = $state(true);
+  let currentPotToken = $state<"icp" | "ckbtc" | "gldt">("icp");
+  let pollInterval: ReturnType<typeof setInterval>;
+  let potRotationInterval: ReturnType<typeof setInterval>;
+
+  const icpValue = $derived(Number(volume24h.icp) / 1e8);
+  const ckbtcValue = $derived(Number(volume24h.ckbtc) / 1e8);
+  const gldtValue = $derived(Number(volume24h.gldt) / 1e8);
+
+  const currentPotValue = $derived.by(() => {
+    if (currentPotToken === "icp") return Number(largestPots.icp) / 1e8;
+    if (currentPotToken === "ckbtc") return Number(largestPots.ckbtc) / 1e8;
+    return Number(largestPots.gldt) / 1e8;
+  });
+
+  function calculatePercentChange(current: bigint, previous: bigint): number {
+    if (previous === 0n) return 0;
+    const curr = Number(current);
+    const prev = Number(previous);
+    return ((curr - prev) / prev) * 100;
+  }
+
+  async function fetchStats() {
+    try {
+      const [vol24hRes, largestPotsRes] = await Promise.all([
+        gameStore.get24hVolume(),
+        gameStore.getLargestPots(),
+      ]);
+
+      if (vol24hRes.success && vol24hRes.data) {
+        if (
+          prevVolume24h.icp > 0n ||
+          prevVolume24h.ckbtc > 0n ||
+          prevVolume24h.gldt > 0n
+        ) {
+          volumeChange = {
+            icp: calculatePercentChange(
+              vol24hRes.data.totalICP,
+              prevVolume24h.icp,
+            ),
+            ckbtc: calculatePercentChange(
+              vol24hRes.data.totalCkBTC,
+              prevVolume24h.ckbtc,
+            ),
+            gldt: calculatePercentChange(
+              vol24hRes.data.totalGLDT,
+              prevVolume24h.gldt,
+            ),
+          };
+        }
+
+        prevVolume24h = { ...volume24h };
+
+        volume24h = {
+          icp: vol24hRes.data.totalICP,
+          ckbtc: vol24hRes.data.totalCkBTC,
+          gldt: vol24hRes.data.totalGLDT,
+        };
+      }
+
+      if (largestPotsRes.success && largestPotsRes.data) {
+        largestPots = {
+          icp: largestPotsRes.data.totalICP,
+          ckbtc: largestPotsRes.data.totalCkBTC,
+          gldt: largestPotsRes.data.totalGLDT,
+        };
+      }
+    } catch (err) {
+      console.error("Failed to load analytics:", err);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  onMount(async () => {
+    await fetchStats();
+    pollInterval = setInterval(fetchStats, 30000);
+
+    potRotationInterval = setInterval(() => {
+      if (currentPotToken === "icp") currentPotToken = "ckbtc";
+      else if (currentPotToken === "ckbtc") currentPotToken = "gldt";
+      else currentPotToken = "icp";
+    }, 3000);
+  });
+
+  onDestroy(() => {
+    if (pollInterval) clearInterval(pollInterval);
+    if (potRotationInterval) clearInterval(potRotationInterval);
+  });
 </script>
 
 <div class="relative min-h-screen bg-[#1a0033] overflow-x-hidden font-amiga">
-  <!-- Flickering Grid Background -->
   <div class="absolute inset-0">
     <FlickeringGrid
       class="z-0 absolute inset-0 size-full"
@@ -24,7 +122,6 @@
 
   <div class="relative z-10 py-8 md:py-12 px-4">
     <section class="relative mx-auto w-full max-w-[1200px]">
-      <!-- HERO SECTION -->
       <div class="mb-12">
         <div class="mx-auto max-w-3xl text-center">
           <h1
@@ -70,7 +167,6 @@
         </div>
       </div>
 
-      <!-- CONTENT TILES -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <!-- CARDS -->
         <div
@@ -79,14 +175,12 @@
           <div class="mb-4 flex items-center gap-2">
             <span
               class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >Cards</span
             >
-              Cards
-            </span>
             <span
               class="bg-white text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >1–54</span
             >
-              1–54
-            </span>
           </div>
           <h3
             class="text-2xl font-black text-[#F4E04D] uppercase mb-3"
@@ -95,7 +189,6 @@
             MEET THE DECK
           </h3>
           <p class="mb-5 text-sm font-bold text-white">54 iconic characters.</p>
-
           <Marquee
             items={cardImages}
             windowSize={12}
@@ -112,14 +205,12 @@
           <div class="mb-4 flex items-center gap-2">
             <span
               class="bg-[#C9B5E8] text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >Tablas</span
             >
-              Tablas
-            </span>
             <span
               class="bg-white text-[#1a0033] border-2 border-black px-3 py-1 text-xs font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+              >363</span
             >
-              363
-            </span>
           </div>
           <h3
             class="text-2xl font-black text-[#C9B5E8] uppercase mb-3"
@@ -130,7 +221,6 @@
           <p class="mb-5 text-sm font-bold text-white">
             Your tabla. Your game. Your rules.
           </p>
-
           <Marquee
             items={tablaImages}
             windowSize={16}
@@ -139,6 +229,11 @@
             gap={10}
             reverse
           />
+          <p
+            class="text-center mt-3 text-[10px] text-white font-bold opacity-70"
+          >
+            * Tablas can be burnt
+          </p>
         </div>
 
         <!-- STATS -->
@@ -154,72 +249,184 @@
           </div>
 
           <h3
-            class="mb-3 text-xl font-black text-white uppercase"
-            style="text-shadow: 3px 3px 0px #000, -1px -1px 0px #000;"
+            class="mb-2 text-lg font-black text-white uppercase"
+            style="text-shadow: 3px 3px 0px #000;"
           >
-            WHAT ARE YOU WAITING FOR?
+            JOIN THE FUN!
           </h3>
-          <p class="mb-5 text-sm font-bold text-[#C9B5E8]">
-            Join the fun! Join. Draw. Bingo!
+          <p class="mb-5 text-sm font-bold text-white">
+            Select tabla. Draw cards. Bingo!
+          </p>
+          <p
+            class="mb-2 text-[10px] font-bold text-[#C9B5E8] uppercase tracking-wider opacity-80 text-center"
+          >
+            24H Platform Volume
           </p>
 
-          <div class="grid grid-cols-2 gap-3 text-center mb-4">
+          <!-- 3 Token Cards -->
+          <div class="grid grid-cols-3 gap-2 mb-4">
+            <!-- ICP -->
             <div
-              class="bg-[#F4E04D] border-2 border-black p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+              class="bg-[#1a0033] border-2 border-[#F4E04D] p-3 rounded text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <div class="text-2xl font-black leading-none text-[#1a0033]">
-                12
+              <img
+                src="/tokens/ICP.svg"
+                alt="ICP"
+                class="w-8 h-8 mx-auto mb-2"
+              />
+              <div class="text-base font-black text-[#F4E04D]">
+                {#if isLoading}
+                  ...
+                {:else}
+                  <NumberTicker
+                    value={icpValue}
+                    decimalPlaces={0}
+                    duration={1500}
+                  />
+                {/if}
+              </div>
+              <div class="text-[9px] font-bold text-[#C9B5E8] uppercase mt-1">
+                ICP
               </div>
               <div
-                class="mt-1 text-[10px] uppercase tracking-wide font-bold text-[#1a0033]"
+                class="text-[8px] font-bold mt-1 {volumeChange.icp > 0
+                  ? 'text-green-400'
+                  : volumeChange.icp < 0
+                    ? 'text-red-400'
+                    : 'text-[#C9B5E8]'}"
               >
-                Live Games
+                {#if volumeChange.icp > 0}
+                  ↑ {volumeChange.icp.toFixed(2)}%
+                {:else if volumeChange.icp < 0}
+                  ↓ {Math.abs(volumeChange.icp).toFixed(2)}%
+                {:else}
+                  — 0.00%
+                {/if}
               </div>
             </div>
+
+            <!-- ckBTC -->
             <div
-              class="bg-[#C9B5E8] border-2 border-black p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+              class="bg-[#1a0033] border-2 border-[#FF9900] p-3 rounded text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <div class="text-2xl font-black leading-none text-[#1a0033]">
-                4,321
+              <img
+                src="/tokens/ck-BTC.svg"
+                alt="ckBTC"
+                class="w-8 h-8 mx-auto mb-2"
+              />
+              <div
+                class="text-sm font-black text-[#FF9900] min-h-[24px] flex items-center justify-center"
+              >
+                {#if isLoading}
+                  ...
+                {:else}
+                  <NumberTicker
+                    value={ckbtcValue}
+                    decimalPlaces={6}
+                    duration={1500}
+                  />
+                {/if}
+              </div>
+              <div class="text-[9px] font-bold text-[#C9B5E8] uppercase mt-1">
+                ckBTC
               </div>
               <div
-                class="mt-1 text-[10px] uppercase tracking-wide font-bold text-[#1a0033]"
+                class="text-[8px] font-bold mt-1 {volumeChange.ckbtc > 0
+                  ? 'text-green-400'
+                  : volumeChange.ckbtc < 0
+                    ? 'text-red-400'
+                    : 'text-[#C9B5E8]'}"
               >
-                Total Games
+                {#if volumeChange.ckbtc > 0}
+                  ↑ {volumeChange.ckbtc.toFixed(2)}%
+                {:else if volumeChange.ckbtc < 0}
+                  ↓ {Math.abs(volumeChange.ckbtc).toFixed(2)}%
+                {:else}
+                  — 0.00%
+                {/if}
               </div>
             </div>
+
+            <!-- GLDT -->
             <div
-              class="bg-white border-2 border-black p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+              class="bg-[#1a0033] border-2 border-[#FFD700] p-3 rounded text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
             >
-              <div class="text-2xl font-black leading-none text-[#1a0033]">
-                363
+              <img
+                src="/tokens/gldt.png"
+                alt="GLDT"
+                class="w-8 h-8 mx-auto mb-2"
+              />
+              <div class="text-base font-black text-[#FFD700]">
+                {#if isLoading}
+                  ...
+                {:else}
+                  <NumberTicker
+                    value={gldtValue}
+                    decimalPlaces={0}
+                    duration={1500}
+                  />
+                {/if}
+              </div>
+              <div class="text-[9px] font-bold text-[#C9B5E8] uppercase mt-1">
+                GLDT
               </div>
               <div
-                class="mt-1 text-[10px] uppercase tracking-wide font-bold text-[#1a0033]"
+                class="text-[8px] font-bold mt-1 {volumeChange.gldt > 0
+                  ? 'text-green-400'
+                  : volumeChange.gldt < 0
+                    ? 'text-red-400'
+                    : 'text-[#C9B5E8]'}"
               >
-                Tablas
-              </div>
-            </div>
-            <div
-              class="bg-gradient-to-b from-[#3d1d63] to-[#522785] border-2 border-black p-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
-            >
-              <div class="text-xl font-black leading-none text-[#F4E04D]">
-                @jeff
-              </div>
-              <div
-                class="mt-1 text-[10px] uppercase tracking-wide font-bold text-white"
-              >
-                Top Player
+                {#if volumeChange.gldt > 0}
+                  ↑ {volumeChange.gldt.toFixed(2)}%
+                {:else if volumeChange.gldt < 0}
+                  ↓ {Math.abs(volumeChange.gldt).toFixed(2)}%
+                {:else}
+                  — 0.00%
+                {/if}
               </div>
             </div>
           </div>
 
-          <div class="flex flex-wrap gap-2 mb-3">
+          <!-- Prize Pool -->
+          <div
+            class="bg-gradient-to-r from-[#F4E04D] to-[#FFD700] border-2 border-black p-3 mb-4 text-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+          >
+            <div class="text-[10px] font-bold text-[#1a0033] uppercase mb-1">
+              Biggest Prize Pool
+            </div>
+            <div class="text-xl font-black text-[#1a0033]">
+              {#if isLoading}
+                ...
+              {:else if currentPotToken === "icp"}
+                <NumberTicker
+                  value={currentPotValue}
+                  decimalPlaces={0}
+                  duration={1000}
+                /> ICP
+              {:else if currentPotToken === "ckbtc"}
+                <NumberTicker
+                  value={currentPotValue}
+                  decimalPlaces={6}
+                  duration={1000}
+                /> ckBTC
+              {:else}
+                <NumberTicker
+                  value={currentPotValue}
+                  decimalPlaces={0}
+                  duration={1000}
+                /> GLDT
+              {/if}
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex gap-2">
             <button
-              onclick={playNow}
+              onclick={buyTabla}
               class="flex-1 bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 py-2 text-xs font-bold uppercase hover:scale-105 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
             >
-              I'M IN!
+              BUY TABLA
             </button>
             <button
               onclick={dashboard}
@@ -228,15 +435,10 @@
               DASHBOARD
             </button>
           </div>
-
-          <p class="text-center text-[10px] text-white font-bold opacity-70">
-            * Tablas can be burnt
-          </p>
         </div>
       </div>
     </section>
 
-    <!-- FOOTER -->
     <footer class="mx-auto mt-12 max-w-[1200px] text-center">
       <div
         class="bg-gradient-to-r from-[#522785] to-[#3d1d63] text-[#F4E04D] border-4 border-black px-8 py-5 inline-block font-bold text-sm uppercase shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"

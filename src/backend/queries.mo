@@ -1,5 +1,4 @@
 import Ids "ids";
-import Enums "enums";
 import T "types";
 
 module Queries {
@@ -31,9 +30,9 @@ module Queries {
     name : Text;
     host : Ids.PlayerId;
     createdAt : Int;
-    status : Enums.GameStatus;
-    mode : Enums.GameMode;
-    tokenType : Enums.TokenType;
+    status : T.GameStatus;
+    mode : T.GameMode;
+    tokenType : T.TokenType;
     entryFee : Nat;
     hostFeePercent : Nat;
     playerCount : Nat;
@@ -76,9 +75,9 @@ module Queries {
     id : Text;
     name : Text;
     host : BasicProfile;
-    status : Enums.GameStatus;
-    mode : Enums.GameMode;
-    tokenType : Enums.TokenType;
+    status : T.GameStatus;
+    mode : T.GameMode;
+    tokenType : T.TokenType;
     entryFee : Nat;
     hostFeePercent : Nat;
     createdAt : Int;
