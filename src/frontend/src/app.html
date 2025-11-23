@@ -38,8 +38,8 @@
       property="og:description"
       content="Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain. Rent tablas, compete for prizes, and win with provably fair gaming."
     />
-    <meta property="og:image" content="https://btcbingo.fun/web-app-manifest-512x512.png" />
-    <meta property="og:image:secure_url" content="https://btcbingo.fun/web-app-manifest-512x512.png" />
+    <meta property="og:image" content="https://btcbingo.fun/favicons/web-app-manifest-512x512.png" />
+    <meta property="og:image:secure_url" content="https://btcbingo.fun/favicons/web-app-manifest-512x512.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
@@ -58,7 +58,7 @@
       name="twitter:description"
       content="Play authentic Mexican Lotería with NFT cards on the Internet Computer blockchain. Rent tablas, compete for prizes, and win with provably fair gaming."
     />
-    <meta name="twitter:image" content="https://btcbingo.fun/web-app-manifest-512x512.png" />
+    <meta name="twitter:image" content="https://btcbingo.fun/favicons/web-app-manifest-512x512.png" />
     <meta name="twitter:image:alt" content="NFT Lotería - Blockchain Gaming on Internet Computer" />
     <meta name="twitter:creator" content="@ICPLoteria" />
     <meta name="twitter:site" content="@ICPLoteria" />
@@ -90,8 +90,8 @@
           "name": "Internet Computer Protocol",
           "url": "https://internetcomputer.org"
         },
-        "image": "https://btcbingo.fun/web-app-manifest-512x512.png",
-        "screenshot": "https://btcbingo.fun/web-app-manifest-512x512.png",
+        "image": "https://btcbingo.fun/favicons/web-app-manifest-512x512.png",
+        "screenshot": "https://btcbingo.fun/favicons/web-app-manifest-512x512.png",
         "gamePlatform": "Internet Computer Blockchain",
         "genre": ["Casino", "Card Game", "Blockchain Game"],
         "inLanguage": "en",
@@ -127,7 +127,7 @@
         "genre": "Card Game",
         "playMode": "MultiPlayer",
         "url": "https://btcbingo.fun",
-        "image": "https://btcbingo.fun/web-app-manifest-512x512.png"
+        "image": "https://btcbingo.fun/favicons/web-app-manifest-512x512.png"
       }
     </script>
 
@@ -208,7 +208,7 @@
     <!-- Preload Preview Image -->
     <link
       rel="preload"
-      href="/web-app-manifest-512x512.png"
+      href="/favicons/web-app-manifest-512x512.png"
       as="image"
       type="image/png"
     />
@@ -231,15 +231,18 @@
       body {
         margin: 0;
         padding: 0;
-        height: 100%;
         width: 100%;
+        min-height: 100%;
         overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
       body {
         font-family: amiga !important;
         color: white !important;
         background-color: #1a0033;
-        height: 100vh;
+        min-height: 100vh;
+        min-height: 100dvh;
         margin: 0;
       }
       @font-face {

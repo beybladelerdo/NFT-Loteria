@@ -43,6 +43,7 @@ body {
   color: white !important;
   background-color: #1a0033;
   min-height: 100vh; /* allow content to grow beyond viewport */
+  min-height: 100dvh; /* account for mobile dynamic viewport height */
   overflow-y: auto; /* enable scrolling */
   -webkit-overflow-scrolling: touch; /* smooth iOS scrolling */
 }
