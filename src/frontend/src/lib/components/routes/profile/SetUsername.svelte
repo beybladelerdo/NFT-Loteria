@@ -4,7 +4,7 @@
   import { isUsernameValid } from "$lib/utils/helpers";
   import { userStore } from "$lib/stores/user-store";
   import FlickeringGrid from "$lib/components/landing/FlickeringGrid.svelte";
-  import Spinner from "../shared/global/spinner.svelte";
+  import Spinner from "../../shared/global/spinner.svelte";
   import { goto } from "$app/navigation";
 
   interface Props {

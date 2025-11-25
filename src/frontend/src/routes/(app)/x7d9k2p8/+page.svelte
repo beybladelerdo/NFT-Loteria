@@ -4,9 +4,9 @@
   import { gameStore } from "$lib/stores/game-store.svelte";
   import { goto } from "$app/navigation";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
-  import TablaLoader from "$lib/components/admin/tabla-loader.svelte";
-  import AdminStats from "$lib/components/admin/admin-stats.svelte";
-  import RegistryManager from "$lib/components/admin/registry-manager.svelte";
+  import TablaLoader from "$lib/components/routes/admin/TablaLoader.svelte";
+  import AdminStats from "$lib/components/routes/admin/AdminStats.svelte";
+  import RegistryManager from "$lib/components/routes/admin/RegistryManager.svelte";
 
   let isAdmin = $state(false);
   let isChecking = $state(true);

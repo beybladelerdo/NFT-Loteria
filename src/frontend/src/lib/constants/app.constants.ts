@@ -12,7 +12,15 @@ export const MIN_BY_TOKEN: Record<"ICP" | "ckBTC" | "GLDT", bigint> = {
   ckBTC: 1_000n,
   GLDT: 100_000_000n,
 };
+export const maxPlayers = 100;
+export const MAX_DECIMALS = 8;
 
+export const DECIMALS: Record<"ICP" | "ckBTC" | "GLDT", number> = {
+  ICP: 8,
+  ckBTC: 8,
+  GLDT: 8,
+};
+export const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 export const SECONDS_IN_MINUTE = 60;
 export const MINUTES_IN_HOUR = 60;
 export const HOURS_IN_DAY = 24;

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { isUsernameValid } from "$lib/utils/helpers";
   import { userStore } from "$lib/stores/user-store";
-  import Spinner from "../shared/global/spinner.svelte";
-  import Modal from "../shared/global/modal.svelte";
+  import Spinner from "../../shared/global/spinner.svelte";
+  import Modal from "../../shared/global/modal.svelte";
 
   interface Props {
     username: string;

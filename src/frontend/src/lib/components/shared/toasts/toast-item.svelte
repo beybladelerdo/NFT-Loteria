@@ -2,13 +2,13 @@
   import { onMount } from "svelte";
   import { toasts } from "$lib/stores/toasts-store";
   import type { Toast } from "$lib/stores/toasts-store";
-  import CloseIcon from "$lib/components/shared/toasts/close-toast.svelte";
 
   interface Props {
     toast: Toast;
   }
 
   let { toast }: Props = $props();
+
   let timer: ReturnType<typeof setTimeout> | null = null;
   let progress = $state(100);
   let progressInterval: ReturnType<typeof setInterval> | null = null;
@@ -18,25 +18,25 @@
 
   const themeConfig = {
     success: {
-      bg: "bg-[#00FF00]",
-      border: "border-[#00FF00]",
-      text: "text-black",
+      bg: "bg-green-500",
+      border: "border-green-500",
+      text: "text-white",
       icon: "✓",
-      glow: "shadow-[0_0_20px_rgba(0,255,0,0.5)]",
+      progressBg: "bg-green-500",
     },
     error: {
-      bg: "bg-[#ED1E79]",
-      border: "border-[#ED1E79]",
+      bg: "bg-red-500",
+      border: "border-red-500",
       text: "text-white",
       icon: "✕",
-      glow: "shadow-[0_0_20px_rgba(237,30,121,0.5)]",
+      progressBg: "bg-red-500",
     },
     info: {
-      bg: "bg-[#29ABE2]",
-      border: "border-[#29ABE2]",
-      text: "text-white",
+      bg: "bg-[#C9B5E8]",
+      border: "border-[#C9B5E8]",
+      text: "text-[#1a0033]",
       icon: "ℹ",
-      glow: "shadow-[0_0_20px_rgba(41,171,226,0.5)]",
+      progressBg: "bg-[#C9B5E8]",
     },
   };
 
@@ -45,7 +45,6 @@
   onMount(() => {
     if (duration > 0) {
       timer = setTimeout(closeToast, duration);
-
       const interval = 50;
       const decrement = (100 / duration) * interval;
       progressInterval = setInterval(() => {
@@ -56,7 +55,6 @@
         }
       }, interval);
     }
-
     return () => {
       if (timer) clearTimeout(timer);
       if (progressInterval) clearInterval(progressInterval);
@@ -69,47 +67,36 @@
 </script>
 
 <div class="w-full max-w-sm">
-  <div class="bg-black border-4 border-black p-1 {theme.glow}">
-    <div
-      class="{theme.bg} border-b-2 border-black p-2 flex items-center justify-between"
-    >
+  <div class="arcade-panel-sm p-3">
+    <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
-        <div class="w-3 h-3 bg-white border border-black"></div>
-        <span class="{theme.text} font-black text-xs uppercase tracking-wider">
-          SYSTEM_{type.toUpperCase()}
+        <div class="{theme.bg} border-2 border-black w-6 h-6 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          <span class="{theme.text} font-black text-lg leading-none">{theme.icon}</span>
+        </div>
+        <span class="{theme.bg} {theme.text} px-2 py-1 font-black text-[10px] uppercase border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+          {type}
         </span>
       </div>
       <button
         onclick={closeToast}
-        class="w-5 h-5 bg-black border border-white hover:bg-white hover:text-black transition-colors flex items-center justify-center"
+        class="w-6 h-6 bg-white text-[#1a0033] border-2 border-black hover:bg-[#F4E04D] transition-colors flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_rgba(0,0,0,1)] font-black text-sm"
         aria-label="Close"
       >
-        <CloseIcon className="w-3 h-3" />
+        ✕
       </button>
     </div>
-    <div class="bg-white border-2 border-black p-4">
-      <div class="flex items-start gap-3">
+
+    <p class="text-white font-bold text-sm leading-snug mb-3 break-words">
+      {toast.message}
+    </p>
+
+    {#if duration > 0}
+      <div class="h-2 bg-[#1a0033] border-2 border-black relative overflow-hidden shadow-[2px_2px_0px_rgba(0,0,0,1)]">
         <div
-          class="{theme.bg} border-2 border-black w-10 h-10 flex items-center justify-center flex-shrink-0"
-        >
-          <span class="{theme.text} font-black text-2xl">{theme.icon}</span>
-        </div>
-        <div class="flex-1 pt-1">
-          <p class="text-black font-bold text-sm leading-tight">
-            {toast.message}
-          </p>
-        </div>
+          class="{theme.progressBg} h-full transition-all duration-50 ease-linear"
+          style="width: {progress}%"
+        ></div>
       </div>
-      {#if duration > 0}
-        <div
-          class="mt-3 h-2 bg-black border border-black relative overflow-hidden"
-        >
-          <div
-            class="{theme.bg} h-full transition-all duration-50 ease-linear"
-            style="width: {progress}%"
-          ></div>
-        </div>
-      {/if}
-    </div>
+    {/if}
   </div>
 </div>

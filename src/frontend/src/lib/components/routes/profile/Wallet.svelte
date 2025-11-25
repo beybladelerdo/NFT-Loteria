@@ -2,8 +2,8 @@
   import { onMount, onDestroy } from "svelte";
   import { tokenStore } from "$lib/stores/token-store";
   import { TokenService } from "$lib/services/token-service";
-  import QRModal from "./qr-modal.svelte";
-  import SendModal from "./send-modal.svelte";
+  import QRModal from "./QRModal.svelte";
+  import SendModal from "./SendModal.svelte";
 
   const tokenService = new TokenService();
 
@@ -48,7 +48,7 @@
 </script>
 
 <div
-  class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-6 md:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
+  class="bg-gradient-to-b from-[#522785] to-[#3d1d63] p-4 sm:p-6 md:p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.8)]"
 >
   <div class="flex items-center justify-between mb-6">
     <span
@@ -66,7 +66,7 @@
   </div>
 
   <h2
-    class="text-2xl md:text-3xl font-black uppercase mb-6 text-[#F4E04D]"
+    class="text-lg sm:text-2xl md:text-3xl font-black uppercase mb-4 sm:mb-6 text-[#F4E04D]"
     style="text-shadow: 3px 3px 0px #000, -1px -1px 0px #000;"
   >
     YOUR BALANCES
@@ -79,18 +79,20 @@
       <div
         class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#C9B5E8] border-t-[#F4E04D]"
       ></div>
-      <p class="mt-4 font-bold text-white uppercase">LOADING BALANCES...</p>
+      <p class="mt-4 font-bold text-white uppercase text-xs sm:text-sm">
+        LOADING BALANCES...
+      </p>
     </div>
   {:else if $tokenStore.error}
     <div
       class="bg-[#FF6EC7] border-4 border-black p-6 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
     >
-      <p class="font-bold text-[#1a0033] uppercase text-lg">
+      <p class="font-bold text-[#1a0033] uppercase text-sm sm:text-lg">
         {$tokenStore.error}
       </p>
       <button
         onclick={handleRefresh}
-        class="mt-4 bg-white text-[#1a0033] px-6 py-3 font-black uppercase border-2 border-black hover:scale-105 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+        class="mt-4 bg-white text-[#1a0033] px-4 py-2 sm:px-6 sm:py-3 font-black uppercase text-xs sm:text-sm border-2 border-black hover:scale-105 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
       >
         RETRY
       </button>
@@ -117,15 +119,16 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-baseline gap-2">
                 <h3
-                  class="text-xl font-black text-[#F4E04D] uppercase"
-                  style="text-shadow: 2px 2px 0px #000;"
-                >
-                  {token.name}
-                </h3>
+  class="text-sm sm:text-lg md:text-xl font-black text-[#F4E04D] uppercase"
+  style="text-shadow: 2px 2px 0px #000;"
+>
+  {token.name}
+</h3>
+
               </div>
               <div class="mt-1">
                 <p
-                  class="text-2xl font-black text-white"
+                  class="text-lg sm:text-2xl font-black text-white"
                   style="text-shadow: 2px 2px 0px #000;"
                 >
                   {tokenService.formatBalance(token.balance, token.decimals)}
@@ -157,7 +160,7 @@
     </div>
 
     {#if $tokenStore.lastUpdated}
-      <p class="text-xs text-center mt-6 font-bold text-[#C9B5E8]">
+      <p class="text-[10px] sm:text-xs text-center mt-4 sm:mt-6 font-bold text-[#C9B5E8]">
         LAST UPDATED: {new Date($tokenStore.lastUpdated).toLocaleTimeString()}
       </p>
     {/if}

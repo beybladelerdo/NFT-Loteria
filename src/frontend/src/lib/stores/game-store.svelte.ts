@@ -3,6 +3,7 @@ import type {
   GameView,
   GameDetail,
   TablaInfo,
+  TablaEarnings
 } from "../../../../declarations/backend/backend.did";
 import type {
   CreateGameParams,
@@ -24,6 +25,7 @@ let currentGame = $state<GameView | null>(null);
 let currentGameDetail = $state<GameDetail | null>(null);
 let availableTablas = $state<TablaInfo[]>([]);
 let isLoading = $state(false);
+let tablaStats = $state<TablaEarnings[]>([]);
 
 export const gameStore = {
   get openGames() {
@@ -43,6 +45,9 @@ export const gameStore = {
   },
   get isLoading() {
     return isLoading;
+  },
+  get tablaStats() {
+    return tablaStats;
   },
 
   // -------- Lists --------
@@ -427,6 +432,31 @@ export const gameStore = {
       return result;
     } catch (error: any) {
       console.error("Error fetching chat messages:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    }
+  },
+    async fetchAllTablaStats() {
+    isLoading = true;
+    try {
+      const result = await new GameService().getAllTablaStats();
+      if (result.success && result.data) {
+        tablaStats = result.data;
+      }
+      return result;
+    } catch (error: any) {
+      console.error("Error fetching tabla stats:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
+    }
+  },
+
+  async getTablaStats(tablaId: number) {
+    try {
+      const result = await new GameService().getTablaStats(tablaId);
+      return result;
+    } catch (error: any) {
+      console.error("Error fetching single tabla stats:", error);
       return { success: false, error: error?.message ?? String(error) };
     }
   },

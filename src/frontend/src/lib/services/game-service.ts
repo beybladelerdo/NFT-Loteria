@@ -1,38 +1,12 @@
 import { ActorFactory } from "../utils/ActorFactory";
 import { Principal } from "@dfinity/principal";
 import { authStore } from "$lib/stores/auth-store";
-import type {
-  _SERVICE,
-  GameView,
-  GameDetail,
-  Profile,
-  TablaInfo,
-  GameMode,
-  TokenType,
-  Position,
-  GetOpenGames,
-  GetActiveGames,
-  GetGame,
-  JoinGame,
-  Result,
-  Result_1,
-  Result_2,
-  Result_3,
-  Result_5,
-  Result_6,
-  Result_7,
-  Result_8,
-  Result_9,
-  Result_10,
-  Result_11,
-  Result_12,
-  Result_13,
+import type { _SERVICE, GameView, GameDetail, Profile, TablaInfo, TablaEarnings, GameMode, TokenType, Position, GetOpenGames, GetActiveGames, GetGame, JoinGame, Result, Result_1, Result_2, Result_3, Result_5,Result_6, Result_7,Result_8, Result_9, Result_10, Result_11, Result_12, Result_13,
 } from "../../../../declarations/backend/backend.did";
+import { BACKEND_CANISTER_ID }from "$lib/constants/app.constants";
 
 export type PrincipalEntry = Array<[number, [] | [Principal]]>;
 
-export const BACKEND_CANISTER_ID =
-  import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 
 function unwrapOpt<T>(opt: [] | [T]): T | null {
   return (opt as any)?.length ? (opt as [T])[0] : null;
@@ -90,6 +64,11 @@ export class GameService {
   private async getActor(): Promise<_SERVICE> {
     return (await ActorFactory.createIdentityActor(
       authStore,
+      BACKEND_CANISTER_ID,
+    )) as unknown as _SERVICE;
+  }
+  private async getPublicActor(): Promise<_SERVICE> {
+    return (await ActorFactory.createAnonymousActor(
       BACKEND_CANISTER_ID,
     )) as unknown as _SERVICE;
   }
@@ -437,6 +416,41 @@ export class GameService {
       return { success: false, error: e?.message ?? String(e) };
     }
   }
+  async getTablaStats(tablaId: number): Promise<{
+    success: boolean;
+    data?: TablaEarnings;
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getPublicActor();
+      const result = await actor.getTablaStats(tablaId);
+
+      const value = (result as [] | [TablaEarnings])[0] ?? null;
+
+      if (!value) {
+        return { success: false, error: "No stats found for this tabla" };
+      }
+
+      return { success: true, data: value };
+    } catch (e: any) {
+      console.error("getTablaStats failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
+  async getAllTablaStats(): Promise<{
+    success: boolean;
+    data?: TablaEarnings[];
+    error?: string;
+  }> {
+    try {
+      const actor = await this.getPublicActor();
+      const result = await actor.getAllTablaStats();
+      return { success: true, data: result as TablaEarnings[] };
+    } catch (e: any) {
+      console.error("getAllTablaStats failed:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
   async terminateGame(
     gameId: string,
   ): Promise<{ success: boolean; message?: string; error?: string }> {
@@ -456,7 +470,7 @@ export class GameService {
     error?: string;
   }> {
     try {
-      const actor = await this.getActor();
+      const actor = await this.getPublicActor();
       const result = await actor.getPlatformVolume();
       return {
         success: true,
@@ -478,7 +492,7 @@ export class GameService {
     error?: string;
   }> {
     try {
-      const actor = await this.getActor();
+      const actor = await this.getPublicActor();
       const result = await actor.get24hVolume();
       return {
         success: true,
@@ -500,7 +514,7 @@ export class GameService {
     error?: string;
   }> {
     try {
-      const actor = await this.getActor();
+     const actor = await this.getPublicActor();
       const result = await actor.getLargestPots();
       return {
         success: true,

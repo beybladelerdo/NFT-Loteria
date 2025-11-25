@@ -1,5 +1,5 @@
 import type { AuthStore } from "$lib/stores/auth-store";
-import type { OptionIdentity } from "$lib/types/identity";
+import type { OptionIdentity } from "$lib/utils/game-helper";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { get } from "svelte/store";
 import { idlFactory as canister } from "../../../../declarations/backend";
@@ -90,7 +90,6 @@ export class ActorFactory {
   }
 
   static async createIdentityActor(authStore: AuthStore, canisterId: string) {
-    // Use get() to read the store value directly - much simpler!
     const store = get(authStore);
     const identity = store.identity;
 
@@ -99,5 +98,8 @@ export class ActorFactory {
     }
 
     return await ActorFactory.createActor(canister, canisterId, identity);
+  }
+  static async createAnonymousActor(canisterId: string) {
+    return await ActorFactory.createActor(canister, canisterId, null);
   }
 }

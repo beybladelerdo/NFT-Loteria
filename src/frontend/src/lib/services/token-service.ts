@@ -2,7 +2,7 @@ import { IcrcLedgerCanister } from "@dfinity/ledger-icrc";
 import { Principal } from "@dfinity/principal";
 import { ActorFactory } from "$lib/utils/ActorFactory";
 import type { TokenType } from "../../../../declarations/backend/backend.did";
-import { BACKEND_CANISTER_ID } from "$lib/services/game-service";
+import { BACKEND_CANISTER_ID } from "$lib/constants/app.constants";
 
 const CANISTER_IDS = {
   ICP: "ryjl3-tyaaa-aaaaa-aaaba-cai",
