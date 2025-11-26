@@ -45,7 +45,8 @@
       rarityProm[id] = (async () => {
         try {
           const info = await gameService.getTabla(Number(id));
-          rarityById[id] = (info?.rarity as Rarity) ?? ({ common: null } as const);
+          rarityById[id] =
+            (info?.rarity as Rarity) ?? ({ common: null } as const);
         } catch {
           rarityById[id] = { common: null };
         } finally {
@@ -131,7 +132,9 @@
   const playerSummary = $derived(() => {
     if (!gameDetail || !viewerPrincipal) return null;
     return (
-      gameDetail.players.find((p) => p.principal.toText() === viewerPrincipal) ?? null
+      gameDetail.players.find(
+        (p) => p.principal.toText() === viewerPrincipal,
+      ) ?? null
     );
   });
 
@@ -191,7 +194,9 @@
   );
 
   const winnerPrincipal = $derived(
-    gameDetail && gameDetail.winner.length > 0 ? gameDetail.winner[0]?.toText() : null,
+    gameDetail && gameDetail.winner.length > 0
+      ? gameDetail.winner[0]?.toText()
+      : null,
   );
 
   const winnerLabel = $derived.by(() => {
@@ -206,11 +211,15 @@
   });
 
   const isWinner = $derived(
-    !!winnerPrincipal && !!viewerPrincipal && winnerPrincipal === viewerPrincipal,
+    !!winnerPrincipal &&
+      !!viewerPrincipal &&
+      winnerPrincipal === viewerPrincipal,
   );
 
   const isGameActive = $derived(!!gameDetail && "active" in gameDetail.status);
-  const isGameCompleted = $derived(!!gameDetail && "completed" in gameDetail.status);
+  const isGameCompleted = $derived(
+    !!gameDetail && "completed" in gameDetail.status,
+  );
   const hasCurrentCardOnTabla = $derived.by(() => {
     if (!currentCardId || !playerSummary()) return false;
     const summary = playerSummary();
@@ -229,7 +238,9 @@
   });
 
   const totalTablas = $derived(playerSummary()?.tablas?.length ?? 0);
-  const shouldShowWinModal = $derived(showWinModal && (locallyClaimedWin || isWinner));
+  const shouldShowWinModal = $derived(
+    showWinModal && (locallyClaimedWin || isWinner),
+  );
   const potDisbursed = $derived(
     isGameCompleted &&
       preClaimPotBalance !== null &&
@@ -446,64 +457,75 @@
   <div class="min-h-screen bg-[#1a0033] flex items-center justify-center p-4">
     <div class="arcade-panel p-6 sm:p-10 text-center max-w-md w-full">
       {#if gameTerminated}
-        <h1 class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow">
+        <h1
+          class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow"
+        >
           Game Terminated
         </h1>
-        <div class="arcade-panel-sm p-4 mb-6">
-          <p class="text-white text-sm font-bold mb-2">
-            The host has terminated this game.
-          </p>
-          <p class="text-[#C9B5E8] text-xs">
-            Your entry fee has been refunded (minus transaction fees).
+        <p class="text-white font-bold mb-6 text-sm sm:text-base">
+          The host has terminated this game. Your entry fee has been refunded
+          (minus transaction fees).
         </p>
-        </div>
       {:else}
-        <h1 class="text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow">
+        <h1
+          class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow"
+        >
           Game Not Found
         </h1>
-        <p class="text-white font-bold mb-6">{errorMessage}</p>
+        <p class="text-white font-bold mb-6 text-sm sm:text-base">
+          {errorMessage}
+        </p>
       {/if}
       <button
-        class="arcade-button px-6 py-3"
+        class="arcade-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base"
         onclick={() => goto("/dashboard")}
       >
-        Go to Dashboard
+        ◄ Back to Dashboard
       </button>
     </div>
   </div>
 {:else if gameDetail}
   {#if !playerSummary()}
-    <div class="min-h-screen bg-[#1a0033] flex items-center justify-center px-6">
-      <div class="arcade-panel p-10 text-center max-w-md space-y-4">
+    <div class="min-h-screen bg-[#1a0033] flex items-center justify-center p-4">
+      <div
+        class="arcade-panel p-6 sm:p-10 text-center max-w-md w-full space-y-4"
+      >
         {#if isHostViewer}
-          <h1 class="text-3xl font-black text-[#F4E04D] uppercase arcade-text-shadow">
+          <h1
+            class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase arcade-text-shadow"
+          >
             You're Hosting This Lobby
           </h1>
-          <p class="text-white font-bold">
+          <p class="text-white font-bold text-sm sm:text-base">
             Use the host dashboard to draw cards and manage the lobby.
           </p>
           <button
-            class="arcade-button px-6 py-3"
+            class="arcade-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base"
             onclick={() => goto(`/game/host/${gameDetail?.id}`)}
           >
             Go to Host View
           </button>
         {:else}
-          <h1 class="text-3xl font-black text-[#F4E04D] uppercase arcade-text-shadow">
+          <h1
+            class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase arcade-text-shadow"
+          >
             Join the Game
           </h1>
-          <p class="text-white font-bold">
-            You haven't joined this lobby yet. Pick a tabla and pay the entry fee to play.
+          <p class="text-white font-bold text-sm sm:text-base">
+            You haven't joined this lobby yet. Pick a tabla and pay the entry
+            fee to play.
           </p>
-          <div class="flex flex-wrap items-center justify-center gap-3">
+          <div
+            class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3"
+          >
             <button
-              class="bg-[#C9B5E8] text-[#1a0033] border-4 border-black px-6 py-3 font-black uppercase shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-[#d9c9f0] active:scale-95"
+              class="bg-[#C9B5E8] text-[#1a0033] border-2 sm:border-4 border-black px-4 sm:px-6 py-2 sm:py-3 font-black uppercase text-xs sm:text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-[#d9c9f0] active:scale-95"
               onclick={() => goto("/join-game")}
             >
               Browse Games
             </button>
             <button
-              class="arcade-button px-6 py-3"
+              class="arcade-button px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm"
               onclick={() => goto(`/join-game?gameId=${gameDetail?.id}`)}
             >
               Join This Lobby
@@ -515,30 +537,46 @@
   {:else}
     <div class="min-h-screen bg-[#1a0033] relative overflow-hidden">
       <FlickeringGrid
-        class="absolute inset-0 opacity-20"
+        class="absolute inset-0 opacity-20 pointer-events-none"
         squareSize={4}
         gridGap={6}
         color="rgba(196, 154, 250, 0.5)"
       />
-      <div class="relative z-10 max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <div
+        class="relative z-10 w-full mx-auto px-4 py-6 sm:py-8 space-y-4 sm:space-y-6 max-w-7xl"
+      >
         <GameHeader
           gameId={gameDetail.id}
           backLabel="Back to Games"
           backPath="/join-game"
         />
 
+        {#if errorMessage}
+          <div
+            class="bg-[#FF6EC7] border-2 sm:border-4 border-black text-[#1a0033] font-bold uppercase text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          >
+            {errorMessage}
+          </div>
+        {/if}
+
         {#if isWinner}
-          <div class="bg-[#F4E04D] text-[#1a0033] border-4 border-black font-black uppercase px-4 py-3 text-center shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+          <div
+            class="bg-[#F4E04D] text-[#1a0033] border-2 sm:border-4 border-black font-bold uppercase text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          >
             🎉 Congratulations! You are the winner of this game!
           </div>
         {:else if winnerLabel}
-          <div class="bg-[#C9B5E8] text-[#1a0033] border-4 border-black font-black uppercase px-4 py-3 text-center shadow-[6px_6px_0px_rgba(0,0,0,0.8)]">
+          <div
+            class="bg-[#C9B5E8] text-[#1a0033] border-2 sm:border-4 border-black font-bold uppercase text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 text-center shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          >
             🏆 Winner: {winnerLabel}
           </div>
         {/if}
 
-        <div class="grid lg:grid-cols-[320px,1fr] gap-6">
-          <aside class="space-y-6">
+        <div
+          class="grid grid-cols-1 lg:grid-cols-[minmax(280px,380px),1fr] gap-4 sm:gap-6"
+        >
+          <aside class="space-y-4 sm:space-y-6 w-full">
             <PlayerStatusPanel
               {gameDetail}
               player={playerSummary()!}
@@ -546,16 +584,14 @@
               {potBalance}
               {potDisbursed}
             />
-
             <PlayerList players={otherPlayersStats} {playerName} />
-
             {#if isLobbyStatus}
               <ShareInvitePanel {inviteLink} />
             {/if}
           </aside>
 
-          <main class="space-y-6">
-            <div class="arcade-panel p-6 space-y-6">
+          <main class="space-y-4 sm:space-y-6 w-full min-w-0">
+            <div class="arcade-panel p-4 sm:p-6 space-y-4 sm:space-y-6">
               <GameStatusInfo
                 {gameDetail}
                 {potBalance}
@@ -567,11 +603,11 @@
                 onRefresh={() => refreshGame(true)}
               />
 
-              <div class="grid grid-cols-1 md:grid-cols-[180px,1fr] gap-4 items-start">
-               <CurrentCardDisplay
-  cardId={currentCardId}
-  cardImage={currentCardId ? getCardImage(currentCardId) : ""}
-/>
+              <div class="flex justify-center">
+                <CurrentCardDisplay
+                  cardId={currentCardId}
+                  cardImage={currentCardId ? getCardImage(currentCardId) : ""}
+                />
               </div>
             </div>
 
@@ -587,7 +623,8 @@
             {#if currentTabla}
               <TablaCard
                 tabla={currentTabla}
-                rarity={rarityById[currentTabla.tablaId] ?? ({ common: null } as const)}
+                rarity={rarityById[currentTabla.tablaId] ??
+                  ({ common: null } as const)}
                 tablaGrid={tablaGrid(currentTabla)}
                 marksOnTabla={marksByTabla.get(currentTabla.tablaId) ?? 0}
                 {isGameActive}
@@ -598,15 +635,11 @@
               />
             {/if}
 
-            <div class="arcade-panel p-6">
+            <div class="arcade-panel p-4 sm:p-6">
               <GameChat gameId={gameDetail.id} />
             </div>
 
-            <DrawHistoryGrid
-              {drawnCards}
-              {currentCardId}
-              getCardImage={getCardImage}
-            />
+            <DrawHistoryGrid {drawnCards} {currentCardId} {getCardImage} />
           </main>
         </div>
       </div>

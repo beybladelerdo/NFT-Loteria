@@ -118,9 +118,13 @@
   </div>
 {:else if user}
   <div class="min-h-screen bg-[#1a0033] pb-8">
-    <div class="max-w-4xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-4 sm:space-y-6">
+    <div
+      class="max-w-4xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-4 sm:space-y-6"
+    >
       <div class="text-center mb-6 sm:mb-8">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black uppercase mb-2 px-2 arcade-text-shadow">
+        <h1
+          class="text-3xl sm:text-4xl md:text-5xl font-black uppercase mb-2 px-2 arcade-text-shadow"
+        >
           <span class="text-[#F4E04D]">YOUR PROFILE</span>
         </h1>
       </div>
@@ -164,7 +168,9 @@
                 </button>
                 <button
                   onclick={saveUsername}
-                  disabled={!usernameAvailable || isSavingUsername || newUsername === user.username}
+                  disabled={!usernameAvailable ||
+                    isSavingUsername ||
+                    newUsername === user.username}
                   class="arcade-button flex-1 px-4 py-2 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isSavingUsername ? "SAVING..." : "SAVE"}
@@ -172,12 +178,18 @@
               </div>
             </div>
           {:else}
-            <div class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div
+              class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+            >
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#F4E04D] to-[#C9B5E8] border-2 border-black flex items-center justify-center text-[#1a0033] font-black text-lg sm:text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] flex-shrink-0">
+                <div
+                  class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[#F4E04D] to-[#C9B5E8] border-2 border-black flex items-center justify-center text-[#1a0033] font-black text-lg sm:text-xl shadow-[2px_2px_0px_rgba(0,0,0,1)] flex-shrink-0"
+                >
                   {user.username[0].toUpperCase()}
                 </div>
-                <span class="text-xl sm:text-2xl font-black text-[#F4E04D] arcade-text-shadow break-all">
+                <span
+                  class="text-xl sm:text-2xl font-black text-[#F4E04D] arcade-text-shadow break-all"
+                >
                   @{user.username}
                 </span>
               </div>
@@ -196,8 +208,12 @@
             <span class="arcade-badge bg-[#C9B5E8]">Principal ID</span>
           </div>
 
-          <div class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-            <code class="text-xs sm:text-sm font-bold text-[#C9B5E8] break-all flex-1 w-full">
+          <div
+            class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3"
+          >
+            <code
+              class="text-xs sm:text-sm font-bold text-[#C9B5E8] break-all flex-1 w-full"
+            >
               {principal}
             </code>
             <button
@@ -214,8 +230,12 @@
             <span class="arcade-badge bg-white">Account ID</span>
           </div>
 
-          <div class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-            <code class="text-xs sm:text-sm font-bold text-white break-all flex-1 w-full">
+          <div
+            class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3"
+          >
+            <code
+              class="text-xs sm:text-sm font-bold text-white break-all flex-1 w-full"
+            >
               {accountId}
             </code>
             <button

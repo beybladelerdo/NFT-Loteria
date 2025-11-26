@@ -135,7 +135,9 @@
           >
             <span class="text-[#F4E04D]">CHOOSE YOUR TAG</span>
           </h1>
-          <p class="text-sm sm:text-base md:text-lg font-bold text-white max-w-xl mx-auto px-2">
+          <p
+            class="text-sm sm:text-base md:text-lg font-bold text-white max-w-xl mx-auto px-2"
+          >
             We've generated a unique username for you. Keep it or change it—your
             choice.
           </p>

@@ -29,15 +29,16 @@
 
 <div class="arcade-panel p-4 sm:p-6">
   <div class="mb-3 sm:mb-4">
-    <span class="arcade-badge bg-white">
-      Share Lobby
-    </span>
+    <span class="arcade-badge bg-white"> Share Lobby </span>
   </div>
-  
-  <p class="text-xs font-bold text-white uppercase mb-3 sm:mb-4 leading-relaxed">
-    Share this invite link so friends can join your lobby. It copies instantly to your clipboard.
+
+  <p
+    class="text-xs font-bold text-white uppercase mb-3 sm:mb-4 leading-relaxed"
+  >
+    Share this invite link so friends can join your lobby. It copies instantly
+    to your clipboard.
   </p>
-  
+
   <div class="arcade-panel-sm px-2 sm:px-3 py-2 sm:py-3 space-y-2 sm:space-y-3">
     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
       <input

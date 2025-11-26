@@ -2,7 +2,12 @@
   import { TokenService } from "$lib/services/token-service";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import type { GameDetailData } from "$lib/utils/helpers";
-  import { modeLabel, shortPrincipal, unwrapOpt, symbolFromVariant } from "$lib/utils/helpers";
+  import {
+    modeLabel,
+    shortPrincipal,
+    unwrapOpt,
+    symbolFromVariant,
+  } from "$lib/utils/helpers";
 
   interface Props {
     detail: GameDetailData | null;
@@ -16,11 +21,11 @@
 
 <div class="arcade-panel p-4 sm:p-6 space-y-4">
   <div>
-    <span class="arcade-badge mb-3 inline-block">
-      LOBBY DETAILS
-    </span>
+    <span class="arcade-badge mb-3 inline-block"> LOBBY DETAILS </span>
     {#if detail}
-      <h2 class="text-xl sm:text-2xl font-black text-white uppercase arcade-text-shadow">
+      <h2
+        class="text-xl sm:text-2xl font-black text-white uppercase arcade-text-shadow"
+      >
         {detail.name}
       </h2>
     {/if}
@@ -31,7 +36,9 @@
       <Spinner />
     </div>
   {:else if detail}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm font-bold uppercase">
+    <div
+      class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm font-bold uppercase"
+    >
       <div class="text-white">
         Host:
         <span class="text-[#F4E04D] block sm:inline break-all">
@@ -66,7 +73,9 @@
         Players in Lobby:
       </p>
       {#if detail.players.length === 0}
-        <p class="text-[10px] sm:text-[11px] text-[#8f7fc1] font-bold uppercase">
+        <p
+          class="text-[10px] sm:text-[11px] text-[#8f7fc1] font-bold uppercase"
+        >
           No one has joined yet. You can be the first!
         </p>
       {:else}

@@ -78,13 +78,15 @@
       Game Chat
     </span>
   </div>
-  
+
   <div
     bind:this={chatContainer}
     class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3 bg-[#1a0033] min-h-0"
   >
     {#if messages.length === 0}
-      <div class="text-center text-[#C9B5E8] text-xs sm:text-sm font-bold opacity-60">
+      <div
+        class="text-center text-[#C9B5E8] text-xs sm:text-sm font-bold opacity-60"
+      >
         No messages yet. Say hello!
       </div>
     {:else}
@@ -107,7 +109,7 @@
       {/each}
     {/if}
   </div>
-  
+
   <div class="p-2 sm:p-3 border-t-2 border-black bg-[#3d1d63] flex-shrink-0">
     <div class="flex gap-2">
       <input

@@ -24,7 +24,9 @@
       onclick={(e) => e.stopPropagation()}
     >
       <div class="flex items-start justify-between mb-4">
-        <h3 class="text-lg sm:text-xl font-black text-[#F4E04D] uppercase arcade-text-shadow">
+        <h3
+          class="text-lg sm:text-xl font-black text-[#F4E04D] uppercase arcade-text-shadow"
+        >
           {title}
         </h3>
         <button
@@ -35,7 +37,9 @@
         </button>
       </div>
 
-      <div class="space-y-3 text-white text-xs sm:text-sm font-bold leading-relaxed">
+      <div
+        class="space-y-3 text-white text-xs sm:text-sm font-bold leading-relaxed"
+      >
         {@render children()}
       </div>
     </div>

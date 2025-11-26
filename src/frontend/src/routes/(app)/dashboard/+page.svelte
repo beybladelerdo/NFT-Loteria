@@ -3,7 +3,10 @@
   import { goto } from "$app/navigation";
   import { userStore } from "$lib/stores/user-store";
   import { gameStore } from "$lib/stores/game-store.svelte";
-  import type { Profile, TablaEarnings } from "../../../../../declarations/backend/backend.did";
+  import type {
+    Profile,
+    TablaEarnings,
+  } from "../../../../../declarations/backend/backend.did";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import StatsCard from "$lib/components/routes/dashboard/Stats.svelte";
   import TablaEarningsSection from "$lib/components/routes/dashboard/Earnings.svelte";
@@ -91,9 +94,13 @@
   <div class="min-h-screen bg-[#1a0033] pb-8">
     <div class="w-full mx-auto px-4 py-6 sm:py-8 md:py-12 max-w-7xl">
       <div class="mb-8 sm:mb-12 text-center">
-        <h1 class="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tight mb-3 sm:mb-4 leading-tight px-2 arcade-text-shadow">
+        <h1
+          class="text-2xl sm:text-4xl md:text-6xl font-black uppercase tracking-tight mb-3 sm:mb-4 leading-tight px-2 arcade-text-shadow"
+        >
           <span class="text-[#F4E04D] block sm:inline">WELCOME BACK,</span>
-          <span class="text-[#C9B5E8] block sm:inline break-all">@{profile.username}</span>
+          <span class="text-[#C9B5E8] block sm:inline break-all"
+            >@{profile.username}</span
+          >
         </h1>
       </div>
 
@@ -112,6 +119,7 @@
           {failedClaims}
           {retryingClaim}
           onRetryClaim={handleRetryClaim}
+          callerPrincipal={profile.principalId}
         />
       </div>
     </div>

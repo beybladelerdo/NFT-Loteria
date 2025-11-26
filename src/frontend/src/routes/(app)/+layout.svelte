@@ -9,7 +9,10 @@
   import { authStore, type AuthStoreData } from "$lib/stores/auth-store";
   import { authSignedInStore } from "$lib/derived/auth.derived";
   import { userStore } from "$lib/stores/user-store";
-  import { displayAndCleanLogoutMsg, signIn } from "$lib/services/auth-services";
+  import {
+    displayAndCleanLogoutMsg,
+    signIn,
+  } from "$lib/services/auth-services";
   import type { Profile } from "../../../../declarations/backend/backend.did";
   import Header from "$lib/components/shared/Header.svelte";
   import Sidebar from "$lib/components/shared/Sidebar.svelte";
@@ -33,7 +36,8 @@
   let isSigningIn = $state(false);
   let hasCheckedProfile = $state(false);
   let showGameReturnPrompt = $state(false);
-  let activeGame: { gameId: string; role: "host" | "player" } | null = $state(null);
+  let activeGame: { gameId: string; role: "host" | "player" } | null =
+    $state(null);
 
   const init = async () => {
     if (!browser) return;
@@ -87,10 +91,12 @@
         const basePlayPath = `/game/play/${result.gameId}`;
 
         const isOnHostPathForThisGame =
-          currentPath === baseHostPath || currentPath.startsWith(baseHostPath + "/");
+          currentPath === baseHostPath ||
+          currentPath.startsWith(baseHostPath + "/");
 
         const isOnPlayPathForThisGame =
-          currentPath === basePlayPath || currentPath.startsWith(basePlayPath + "/");
+          currentPath === basePlayPath ||
+          currentPath.startsWith(basePlayPath + "/");
 
         const isInCorrectPlace =
           (result.role === "host" && isOnHostPathForThisGame) ||

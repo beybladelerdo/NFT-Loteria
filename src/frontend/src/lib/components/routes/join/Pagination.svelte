@@ -32,11 +32,11 @@
   >
     ◄ PREV
   </button>
-  
+
   <span class="text-white text-xs sm:text-sm font-bold uppercase">
     Page {currentPage} / {totalPages}
   </span>
-  
+
   <button
     class="px-4 py-2 border-2 border-black bg-[#C9B5E8] text-[#1a0033] font-bold uppercase text-xs shadow-[2px_2px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#d9c9f0] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_rgba(0,0,0,1)]"
     disabled={currentPage === totalPages}

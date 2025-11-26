@@ -11,7 +11,8 @@
     onClose: () => void;
   }
 
-  let { show, potBalance, tokenType, hostFeePercent, onClose }: Props = $props();
+  let { show, potBalance, tokenType, hostFeePercent, onClose }: Props =
+    $props();
 
   const tokenService = new TokenService();
 
@@ -23,56 +24,70 @@
   }
 
   const estPlatformFee = $derived(
-    potBalance !== null ? pct(potBalance, PLATFORM_FEE_PERCENT) : null
+    potBalance !== null ? pct(potBalance, PLATFORM_FEE_PERCENT) : null,
   );
-  
+
   const estOwnerFee = $derived(
-    potBalance !== null ? pct(potBalance, OWNER_FEE_PERCENT) : null
+    potBalance !== null ? pct(potBalance, OWNER_FEE_PERCENT) : null,
   );
-  
+
   const estHostFee = $derived(
-    potBalance !== null ? pct(potBalance, hostFeePercent) : null
+    potBalance !== null ? pct(potBalance, hostFeePercent) : null,
   );
-  
+
   const estWinnerAmt = $derived(
     potBalance !== null &&
       estPlatformFee !== null &&
       estOwnerFee !== null &&
       estHostFee !== null
       ? potBalance - estPlatformFee - estOwnerFee - estHostFee
-      : null
+      : null,
   );
 
   const formattedPot = $derived(
-    potBalance !== null ? tokenService.formatBalance(potBalance, 8) : "—"
+    potBalance !== null ? tokenService.formatBalance(potBalance, 8) : "—",
   );
 </script>
 
 {#if show}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center px-4" onclick={(e) => e.target === e.currentTarget && onClose()}>
-    <div class="max-w-md w-full bg-gradient-to-b from-[#F4E04D] to-[#ffef9a] border-8 border-black shadow-[12px_12px_0_rgba(0,0,0,0.9)] p-4 sm:p-6 text-center">
-      <h2 class="text-2xl sm:text-3xl font-black uppercase text-[#1a0033]" style="text-shadow:2px 2px 0 #fff">
+  <div
+    class="fixed inset-0 z-[100] bg-black/70 flex items-center justify-center px-4"
+    onclick={(e) => e.target === e.currentTarget && onClose()}
+  >
+    <div
+      class="max-w-md w-full bg-gradient-to-b from-[#F4E04D] to-[#ffef9a] border-8 border-black shadow-[12px_12px_0_rgba(0,0,0,0.9)] p-4 sm:p-6 text-center"
+    >
+      <h2
+        class="text-2xl sm:text-3xl font-black uppercase text-[#1a0033]"
+        style="text-shadow:2px 2px 0 #fff"
+      >
         🎉 Bingo!
       </h2>
-      
+
       <p class="mt-3 text-sm font-bold text-[#1a0033] uppercase">
         You've won the prize pool
       </p>
-      
-      <p class="mt-2 text-2xl sm:text-3xl font-black text-[#1a0033]" style="text-shadow:1px 1px 0 #fff">
+
+      <p
+        class="mt-2 text-2xl sm:text-3xl font-black text-[#1a0033]"
+        style="text-shadow:1px 1px 0 #fff"
+      >
         {estWinnerAmt !== null
           ? tokenService.formatBalance(estWinnerAmt, 8)
           : formattedPot}
         &nbsp;{tokenSymbol(tokenType)}
       </p>
 
-      <div class="mt-5 bg-white/70 border-4 border-black text-left p-3 sm:p-4 font-black uppercase text-xs text-[#1a0033]">
+      <div
+        class="mt-5 bg-white/70 border-4 border-black text-left p-3 sm:p-4 font-black uppercase text-xs text-[#1a0033]"
+      >
         <div class="flex justify-between mb-2">
           <span>Total Prize Pool</span>
           <span class="break-all">
-            {formattedPot} {tokenSymbol(tokenType)}
+            {formattedPot}
+            {tokenSymbol(tokenType)}
           </span>
         </div>
         <div class="h-px bg-black/30 my-2"></div>
@@ -114,7 +129,8 @@
           </span>
         </div>
         <div class="mt-2 text-[10px] text-[#4b3c00]">
-          Network fees not included in estimate; actual payouts may vary slightly.
+          Network fees not included in estimate; actual payouts may vary
+          slightly.
         </div>
       </div>
 

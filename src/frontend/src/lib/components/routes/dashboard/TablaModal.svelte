@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { TablaEarnings } from "../../../../../../declarations/backend/backend.did";
-  import { toNumber, formatTokenEarnings, formatLastUsed } from "$lib/utils/helpers";
+  import {
+    toNumber,
+    formatTokenEarnings,
+    formatLastUsed,
+  } from "$lib/utils/helpers";
 
   interface Props {
     tabla: TablaEarnings | null;
@@ -30,7 +34,9 @@
     aria-modal="true"
     aria-labelledby="tabla-modal-title"
   >
-    <div class="relative max-w-md w-full arcade-panel p-4 sm:p-6 rounded-xl max-h-[90vh] overflow-y-auto">
+    <div
+      class="relative max-w-md w-full arcade-panel p-4 sm:p-6 rounded-xl max-h-[90vh] overflow-y-auto"
+    >
       <button
         type="button"
         onclick={handleModalClick}
@@ -48,22 +54,32 @@
       </h3>
 
       <div class="grid grid-cols-2 gap-3 mb-4 text-xs sm:text-sm">
-        <div class="bg-[#F4E04D] text-[#1a0033] border-2 border-black p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)]">
+        <div
+          class="bg-[#F4E04D] text-[#1a0033] border-2 border-black p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+        >
           <div class="font-black uppercase">Games Played</div>
           <div class="text-2xl sm:text-3xl font-black">
             {toNumber(tabla.gamesPlayed)}
           </div>
         </div>
-        <div class="bg-[#C9B5E8] text-[#1a0033] border-2 border-black p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)]">
-          <div class="font-black uppercase text-[10px] sm:text-xs">Last Used</div>
+        <div
+          class="bg-[#C9B5E8] text-[#1a0033] border-2 border-black p-3 shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+        >
+          <div class="font-black uppercase text-[10px] sm:text-xs">
+            Last Used
+          </div>
           <div class="text-xs sm:text-sm font-bold mt-1">
             {formatLastUsed(tabla.lastUsed)}
           </div>
         </div>
       </div>
 
-      <div class="bg-[#25004d] border-2 border-black p-3 sm:p-4 mb-4 shadow-[3px_3px_0px_rgba(0,0,0,1)] rounded-lg">
-        <div class="text-xs sm:text-sm font-black text-[#C9B5E8] uppercase mb-2">
+      <div
+        class="bg-[#25004d] border-2 border-black p-3 sm:p-4 mb-4 shadow-[3px_3px_0px_rgba(0,0,0,1)] rounded-lg"
+      >
+        <div
+          class="text-xs sm:text-sm font-black text-[#C9B5E8] uppercase mb-2"
+        >
           Earnings Breakdown
         </div>
         <div class="space-y-2 text-xs sm:text-sm">
@@ -90,7 +106,8 @@
 
       <div class="text-[10px] sm:text-xs text-[#C9B5E8]">
         <p>
-          Tip: reuse high-earning tablas when you host or join games to maximize your returns.
+          Tip: reuse high-earning tablas when you host or join games to maximize
+          your returns.
         </p>
       </div>
     </div>

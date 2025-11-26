@@ -28,20 +28,32 @@
     </button>
   </div>
   <div class="grid grid-cols-3 gap-2 sm:gap-3">
-    <div class="bg-[#F4E04D] border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-      <p class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate">
+    <div
+      class="bg-[#F4E04D] border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+    >
+      <p
+        class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate"
+      >
         {formatSmart(balances.ICP)}
       </p>
       <p class="text-[#1a0033] font-bold text-[10px] sm:text-xs">ICP</p>
     </div>
-    <div class="bg-[#C9B5E8] border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-      <p class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate">
+    <div
+      class="bg-[#C9B5E8] border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+    >
+      <p
+        class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate"
+      >
         {formatSmart(balances.ckBTC)}
       </p>
       <p class="text-[#1a0033] font-bold text-[10px] sm:text-xs">ckBTC</p>
     </div>
-    <div class="bg-white border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-      <p class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate">
+    <div
+      class="bg-white border-2 border-black p-2 sm:p-3 text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+    >
+      <p
+        class="text-[#1a0033] font-black text-base sm:text-lg md:text-xl truncate"
+      >
         {formatSmart(balances.GLDT)}
       </p>
       <p class="text-[#1a0033] font-bold text-[10px] sm:text-xs">GLDT</p>

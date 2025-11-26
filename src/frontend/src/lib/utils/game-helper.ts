@@ -75,8 +75,7 @@ export function outerBg(r: Rarity): string {
     return "from-yellow-200/35 via-fuchsia-300/20 to-yellow-200/35";
   if ("epic" in r)
     return "from-purple-700/35 via-fuchsia-500/15 to-purple-700/35";
-  if ("rare" in r)
-    return "from-[#ff6ec7]/30 via-[#ff6ec7]/10 to-[#ff6ec7]/30";
+  if ("rare" in r) return "from-[#ff6ec7]/30 via-[#ff6ec7]/10 to-[#ff6ec7]/30";
   if ("uncommon" in r)
     return "from-[#F4E04D]/30 via-[#F4E04D]/10 to-[#F4E04D]/30";
   return "from-[#C9B5E8]/25 via-transparent to-[#C9B5E8]/25";
@@ -107,8 +106,7 @@ export function panelRing(r: Rarity): string {
 export function tablaBg(r: Rarity): string {
   if ("legendary" in r)
     return "from-yellow-300/25 via-fuchsia-300/15 to-yellow-300/25";
-  if ("epic" in r)
-    return "from-purple-500/25 via-pink-400/10 to-purple-500/25";
+  if ("epic" in r) return "from-purple-500/25 via-pink-400/10 to-purple-500/25";
   if ("rare" in r) return "from-[#FF6EC7]/20 via-transparent to-[#FF6EC7]/20";
   if ("uncommon" in r)
     return "from-[#F4E04D]/20 via-transparent to-[#F4E04D]/20";

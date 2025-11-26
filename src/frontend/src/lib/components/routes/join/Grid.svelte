@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { TablaInfo } from "$lib/utils/helpers";
-  import { getRarityColor, getRarityText, getRarityGlow } from "$lib/utils/helpers";
+  import {
+    getRarityColor,
+    getRarityText,
+    getRarityGlow,
+  } from "$lib/utils/helpers";
 
   interface Props {
     tablas: TablaInfo[];
@@ -15,12 +19,16 @@
   {#each tablas as tabla (tabla.id)}
     <button
       onclick={() => onSelect(tabla)}
-      class="group relative arcade-panel-sm p-2 transition-all {selectedIds.includes(tabla.id)
+      class="group relative arcade-panel-sm p-2 transition-all {selectedIds.includes(
+        tabla.id,
+      )
         ? 'ring-4 ring-[#F4E04D] shadow-[6px_6px_0px_rgba(0,0,0,1)]'
         : 'hover:-translate-y-1 hover:shadow-[6px_6px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-[4px_4px_0px_rgba(0,0,0,1)]'}"
     >
       <div
-        class="relative rounded-md overflow-hidden border-2 border-[#C9B5E8] bg-[#0f0220] {getRarityGlow(tabla.rarity)}"
+        class="relative rounded-md overflow-hidden border-2 border-[#C9B5E8] bg-[#0f0220] {getRarityGlow(
+          tabla.rarity,
+        )}"
         style="aspect-ratio: 569/1000;"
       >
         <img
@@ -45,13 +53,17 @@
       {/if}
 
       <div class="mt-2 space-y-1">
-        <p class="text-[10px] sm:text-xs font-bold text-white text-center uppercase break-words">
+        <p
+          class="text-[10px] sm:text-xs font-bold text-white text-center uppercase break-words"
+        >
           {tabla.name}
         </p>
 
         <div
           class="text-[9px] sm:text-[10px] font-bold text-center px-2 py-0.5 border border-black"
-          style="background-color: {getRarityColor(tabla.rarity)}; color: #1a0033;"
+          style="background-color: {getRarityColor(
+            tabla.rarity,
+          )}; color: #1a0033;"
         >
           {getRarityText(tabla.rarity)}
         </div>

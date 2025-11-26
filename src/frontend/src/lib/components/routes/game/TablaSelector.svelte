@@ -159,9 +159,7 @@
 
 <div class="arcade-panel p-4 sm:p-6">
   <div class="flex items-center justify-between mb-4">
-    <span class="arcade-badge">
-      SELECT TABLA
-    </span>
+    <span class="arcade-badge"> SELECT TABLA </span>
     <div class="flex items-center gap-2">
       <span class="arcade-badge bg-[#FF6EC7]">
         {selectedTablaIds.length}/{MAX_TABLAS}
@@ -175,7 +173,9 @@
     </div>
   </div>
 
-  <h3 class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow">
+  <h3
+    class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow"
+  >
     CHOOSE YOUR TABLAS
   </h3>
 
@@ -192,29 +192,34 @@
   />
 
   {#if error}
-    <div class="mt-4 bg-red-500 border-2 border-black p-3 text-white font-bold uppercase text-xs text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+    <div
+      class="mt-4 bg-red-500 border-2 border-black p-3 text-white font-bold uppercase text-xs text-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+    >
       {error}
     </div>
   {/if}
 
   <div class="mt-4">
     {#if isLoading}
-      <div class="arcade-panel-sm p-12 flex flex-col items-center justify-center">
+      <div
+        class="arcade-panel-sm p-12 flex flex-col items-center justify-center"
+      >
         <Spinner />
-        <p class="mt-4 font-bold text-white uppercase text-xs">LOADING TABLAS...</p>
+        <p class="mt-4 font-bold text-white uppercase text-xs">
+          LOADING TABLAS...
+        </p>
       </div>
     {:else if tablas.length === 0}
       <div class="arcade-panel-sm p-6 sm:p-8 text-center">
-        <h4 class="text-lg sm:text-xl font-black text-[#FF6EC7] uppercase mb-3 arcade-text-shadow">
+        <h4
+          class="text-lg sm:text-xl font-black text-[#FF6EC7] uppercase mb-3 arcade-text-shadow"
+        >
           NO TABLAS AVAILABLE!
         </h4>
         <p class="text-white font-bold text-xs sm:text-sm mb-4 sm:mb-6">
           All tablas are currently being used in this game. Try refreshing!
         </p>
-        <button
-          onclick={loadTablas}
-          class="arcade-button px-4 py-2 text-xs"
-        >
+        <button onclick={loadTablas} class="arcade-button px-4 py-2 text-xs">
           🔄 REFRESH
         </button>
       </div>
@@ -234,8 +239,12 @@
 
         {#if selectedTablaIds.length > 0}
           <div class="arcade-panel-sm p-3">
-            <p class="text-[#F4E04D] font-bold text-xs sm:text-sm text-center uppercase">
-              ✓ {selectedTablaIds.length} TABLA{selectedTablaIds.length > 1 ? "S" : ""} SELECTED: #{selectedTablaIds.join(", #")}
+            <p
+              class="text-[#F4E04D] font-bold text-xs sm:text-sm text-center uppercase"
+            >
+              ✓ {selectedTablaIds.length} TABLA{selectedTablaIds.length > 1
+                ? "S"
+                : ""} SELECTED: #{selectedTablaIds.join(", #")}
             </p>
           </div>
         {/if}
@@ -244,29 +253,52 @@
   </div>
 </div>
 
-<InfoModal show={showInfo} title="How It Works" onClose={() => (showInfo = false)}>
+<InfoModal
+  show={showInfo}
+  title="How It Works"
+  onClose={() => (showInfo = false)}
+>
   <div class="flex gap-3">
     <span class="text-[#F4E04D] text-xl">•</span>
-    <p>You need at least <span class="text-[#F4E04D]">1 tabla</span> to enter the game</p>
+    <p>
+      You need at least <span class="text-[#F4E04D]">1 tabla</span> to enter the
+      game
+    </p>
   </div>
   <div class="flex gap-3">
     <span class="text-[#F4E04D] text-xl">•</span>
-    <p>You can select up to <span class="text-[#F4E04D]">4 tablas</span> per game</p>
+    <p>
+      You can select up to <span class="text-[#F4E04D]">4 tablas</span> per game
+    </p>
   </div>
   <div class="flex gap-3">
     <span class="text-[#F4E04D] text-xl">•</span>
-    <p>Each tabla requires an <span class="text-[#F4E04D]">additional entry fee</span></p>
+    <p>
+      Each tabla requires an <span class="text-[#F4E04D]"
+        >additional entry fee</span
+      >
+    </p>
   </div>
   <div class="flex gap-3">
     <span class="text-[#FF6EC7] text-xl">•</span>
-    <p>More tablas = <span class="text-[#FF6EC7]">higher chance of winning!</span></p>
+    <p>
+      More tablas = <span class="text-[#FF6EC7]">higher chance of winning!</span
+      >
+    </p>
   </div>
   <div class="flex gap-3">
     <span class="text-[#C9B5E8] text-xl">•</span>
-    <p>But you'll need to <span class="text-[#C9B5E8]">pay closer attention</span> to match characters across multiple tablas</p>
+    <p>
+      But you'll need to <span class="text-[#C9B5E8]">pay closer attention</span
+      > to match characters across multiple tablas
+    </p>
   </div>
 </InfoModal>
 
-<InfoModal show={showLuckyInfo} title="Feeling Lucky?" onClose={() => (showLuckyInfo = false)}>
-  <p>Randomly select 1-4 tablas! </p>
+<InfoModal
+  show={showLuckyInfo}
+  title="Feeling Lucky?"
+  onClose={() => (showLuckyInfo = false)}
+>
+  <p>Randomly select 1-4 tablas!</p>
 </InfoModal>

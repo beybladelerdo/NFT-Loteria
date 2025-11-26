@@ -119,12 +119,11 @@
             <div class="flex-1 min-w-0">
               <div class="flex items-baseline gap-2">
                 <h3
-  class="text-sm sm:text-lg md:text-xl font-black text-[#F4E04D] uppercase"
-  style="text-shadow: 2px 2px 0px #000;"
->
-  {token.name}
-</h3>
-
+                  class="text-sm sm:text-lg md:text-xl font-black text-[#F4E04D] uppercase"
+                  style="text-shadow: 2px 2px 0px #000;"
+                >
+                  {token.name}
+                </h3>
               </div>
               <div class="mt-1">
                 <p
@@ -160,7 +159,9 @@
     </div>
 
     {#if $tokenStore.lastUpdated}
-      <p class="text-[10px] sm:text-xs text-center mt-4 sm:mt-6 font-bold text-[#C9B5E8]">
+      <p
+        class="text-[10px] sm:text-xs text-center mt-4 sm:mt-6 font-bold text-[#C9B5E8]"
+      >
         LAST UPDATED: {new Date($tokenStore.lastUpdated).toLocaleTimeString()}
       </p>
     {/if}

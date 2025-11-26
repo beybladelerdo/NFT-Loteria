@@ -88,7 +88,9 @@
     $authStore.identity ? $authStore.identity.getPrincipal().toText() : null,
   );
   const isGameActive = $derived(!!gameDetail && "active" in gameDetail.status);
-  const isGameCompleted = $derived(!!gameDetail && "completed" in gameDetail.status);
+  const isGameCompleted = $derived(
+    !!gameDetail && "completed" in gameDetail.status,
+  );
   const isHostViewer = $derived(
     !!gameDetail &&
       !!viewerPrincipal &&
@@ -308,10 +310,14 @@
 {:else if errorMessage && !gameDetail}
   <div class="min-h-screen bg-[#1a0033] flex items-center justify-center p-4">
     <div class="arcade-panel p-6 sm:p-10 text-center max-w-md w-full">
-      <h1 class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow">
+      <h1
+        class="text-2xl sm:text-3xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow"
+      >
         Game Not Found
       </h1>
-      <p class="text-white font-bold mb-6 text-sm sm:text-base">{errorMessage}</p>
+      <p class="text-white font-bold mb-6 text-sm sm:text-base">
+        {errorMessage}
+      </p>
       <button
         class="arcade-button px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base"
         onclick={() => goto("/dashboard")}
@@ -328,7 +334,9 @@
       gridGap={6}
       color="rgba(196, 154, 250, 0.5)"
     />
-    <div class="relative z-10 w-full mx-auto px-4 py-6 sm:py-8 space-y-4 sm:space-y-6 max-w-7xl">
+    <div
+      class="relative z-10 w-full mx-auto px-4 py-6 sm:py-8 space-y-4 sm:space-y-6 max-w-7xl"
+    >
       <GameHeader
         gameId={gameDetail.id}
         backLabel="Back to Lobby"
@@ -336,12 +344,16 @@
       />
 
       {#if errorMessage}
-        <div class="bg-[#FF6EC7] border-2 sm:border-4 border-black text-[#1a0033] font-bold uppercase text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+        <div
+          class="bg-[#FF6EC7] border-2 sm:border-4 border-black text-[#1a0033] font-bold uppercase text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-3 shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+        >
           {errorMessage}
         </div>
       {/if}
 
-      <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,380px),1fr] gap-4 sm:gap-6">
+      <div
+        class="grid grid-cols-1 lg:grid-cols-[minmax(280px,380px),1fr] gap-4 sm:gap-6"
+      >
         <aside class="space-y-4 sm:space-y-6 w-full">
           <HostInfoPanel {gameDetail} {potBalance} {winnerLabel} />
           <PlayerList players={playersStats} {playerName} />
@@ -379,7 +391,9 @@
             </GameStatusInfo>
 
             {#if "completed" in gameDetail.status && winnerLabel}
-              <div class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 sm:px-4 py-2 sm:py-3 font-black uppercase text-xs sm:text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)]">
+              <div
+                class="bg-[#F4E04D] text-[#1a0033] border-2 border-black px-3 sm:px-4 py-2 sm:py-3 font-black uppercase text-xs sm:text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)]"
+              >
                 🏆 Winner: {winnerLabel}
               </div>
             {/if}
@@ -394,11 +408,7 @@
             <GameChat gameId={gameDetail.id} />
           </div>
 
-          <DrawHistoryGrid
-            {drawnCards}
-            currentCardId={currentCardId}
-            getCardImage={getCardImage}
-          />
+          <DrawHistoryGrid {drawnCards} {currentCardId} {getCardImage} />
         </main>
       </div>
     </div>

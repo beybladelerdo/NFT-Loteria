@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { formatDate, formatAmount, formatTokenType, formatStatus } from "$lib/utils/helpers";
+  import {
+    formatDate,
+    formatAmount,
+    formatTokenType,
+    formatStatus,
+  } from "$lib/utils/helpers";
 
   interface Props {
     recentGames: any[];
@@ -14,13 +19,17 @@
     <span class="arcade-badge">Recent Activity</span>
   </div>
 
-  <h2 class="text-2xl sm:text-3xl font-black uppercase mb-6 sm:mb-8 text-[#F4E04D] arcade-text-shadow">
+  <h2
+    class="text-2xl sm:text-3xl font-black uppercase mb-6 sm:mb-8 text-[#F4E04D] arcade-text-shadow"
+  >
     LATEST GAMES
   </h2>
 
   {#if recentGames.length === 0}
     <div class="text-center py-8 sm:py-12 arcade-panel-sm">
-      <h3 class="text-xl sm:text-2xl font-black uppercase mb-3 sm:mb-4 text-[#F4E04D] px-4 arcade-text-shadow">
+      <h3
+        class="text-xl sm:text-2xl font-black uppercase mb-3 sm:mb-4 text-[#F4E04D] px-4 arcade-text-shadow"
+      >
         NO GAMES YET!
       </h3>
       <p class="text-sm sm:text-lg font-bold mb-4 sm:mb-6 text-white px-4">
@@ -36,7 +45,9 @@
   {:else}
     <div class="space-y-2 sm:space-y-3">
       {#each recentGames as game}
-        <div class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div
+          class="arcade-panel-sm p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+        >
           <div class="flex flex-wrap items-center gap-2 sm:gap-4">
             <div class="text-xs font-bold text-[#C9B5E8] uppercase">
               {formatDate(game.createdAt)}

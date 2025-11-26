@@ -1,12 +1,37 @@
 import { ActorFactory } from "../utils/ActorFactory";
 import { Principal } from "@dfinity/principal";
 import { authStore } from "$lib/stores/auth-store";
-import type { _SERVICE, GameView, GameDetail, Profile, TablaInfo, TablaEarnings, GameMode, TokenType, Position, GetOpenGames, GetActiveGames, GetGame, JoinGame, Result, Result_1, Result_2, Result_3, Result_5,Result_6, Result_7,Result_8, Result_9, Result_10, Result_11, Result_12, Result_13,
+import type {
+  _SERVICE,
+  GameView,
+  GameDetail,
+  Profile,
+  TablaInfo,
+  TablaEarnings,
+  GameMode,
+  TokenType,
+  Position,
+  GetOpenGames,
+  GetActiveGames,
+  GetGame,
+  JoinGame,
+  Result,
+  Result_1,
+  Result_2,
+  Result_3,
+  Result_5,
+  Result_6,
+  Result_7,
+  Result_8,
+  Result_9,
+  Result_10,
+  Result_11,
+  Result_12,
+  Result_13,
 } from "../../../../declarations/backend/backend.did";
-import { BACKEND_CANISTER_ID }from "$lib/constants/app.constants";
+import { BACKEND_CANISTER_ID } from "$lib/constants/app.constants";
 
 export type PrincipalEntry = Array<[number, [] | [Principal]]>;
-
 
 function unwrapOpt<T>(opt: [] | [T]): T | null {
   return (opt as any)?.length ? (opt as [T])[0] : null;
@@ -514,7 +539,7 @@ export class GameService {
     error?: string;
   }> {
     try {
-     const actor = await this.getPublicActor();
+      const actor = await this.getPublicActor();
       const result = await actor.getLargestPots();
       return {
         success: true,

@@ -16,7 +16,7 @@
     cardImage: string;
     show: boolean;
     isHost: boolean;
-    hasCardOnTabla: boolean; // Whether this card exists on user's tabla(s)
+    hasCardOnTabla: boolean;
     onClose?: () => void;
   }
 
@@ -32,24 +32,18 @@
     cardId ? getCharacterColor(cardId) : "#C9B5E8",
   );
 
-  // Handle animation lifecycle
   $effect(() => {
     if (show && cardId && mounted) {
-      // Start shuffle sound loop
       shuffleStopFn = startShuffleLoop();
 
-      // Small delay then flip
       setTimeout(() => {
         flipped = true;
 
-        // Stop shuffle and play hit/miss sound
         if (shuffleStopFn) {
           stopShuffleLoop(shuffleStopFn);
           shuffleStopFn = null;
         }
 
-        // Play appropriate sound based on whether card is on user's tabla
-        // Only play for non-hosts (players)
         if (!isHost) {
           if (hasCardOnTabla) {
             playRevealHit();
@@ -62,13 +56,11 @@
         }
       }, 300);
 
-      // Auto-close after 3.5 seconds
       setTimeout(() => {
         if (onClose) onClose();
       }, 6500);
     } else if (!show) {
       flipped = false;
-      // Clean up shuffle sound if component is hidden
       if (shuffleStopFn) {
         stopShuffleLoop(shuffleStopFn);
         shuffleStopFn = null;
@@ -102,18 +94,11 @@
               </div>
             </div>
           </div>
-
-          <!-- Front of card (revealed) -->
-          <!-- Front of card (revealed) -->
           <div class="flip-card-front">
-            <!-- Card Container with colored border -->
             <div class="card-face" style="border-color: {characterColor};">
-              <!-- Card Image - Now taking full card space -->
               <div class="card-image-container">
                 <img src={cardImage} alt={characterName} class="card-image" />
               </div>
-
-              <!-- Hit/Miss indicator for players only -->
               {#if !isHost && flipped}
                 <div class="hit-miss-indicator">
                   {#if hasCardOnTabla}

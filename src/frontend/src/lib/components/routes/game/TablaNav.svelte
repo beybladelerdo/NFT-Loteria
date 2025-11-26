@@ -20,10 +20,14 @@
     </button>
 
     <div class="text-center flex-1">
-      <p class="text-[#F4E04D] font-black uppercase text-base sm:text-xl leading-tight whitespace-nowrap arcade-text-shadow">
+      <p
+        class="text-[#F4E04D] font-black uppercase text-base sm:text-xl leading-tight whitespace-nowrap arcade-text-shadow"
+      >
         Tabla {currentIndex + 1} of {totalTablas}
       </p>
-      <p class="text-[#C9B5E8] text-[9px] sm:text-xs font-bold uppercase mt-1 hidden sm:block">
+      <p
+        class="text-[#C9B5E8] text-[9px] sm:text-xs font-bold uppercase mt-1 hidden sm:block"
+      >
         Use arrows to switch between your tablas
       </p>
     </div>

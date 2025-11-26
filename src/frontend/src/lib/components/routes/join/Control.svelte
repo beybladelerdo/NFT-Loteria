@@ -22,7 +22,7 @@
     onSortDirChange,
     onPageSizeChange,
     onLucky,
-    onShowInfo
+    onShowInfo,
   }: Props = $props();
 </script>
 
@@ -49,7 +49,9 @@
       <option value="desc">↓ Desc</option>
     </select>
 
-    <label for="page-size" class="font-bold text-white uppercase ml-2">Per Page:</label>
+    <label for="page-size" class="font-bold text-white uppercase ml-2"
+      >Per Page:</label
+    >
     <select
       id="page-size"
       value={pageSize}

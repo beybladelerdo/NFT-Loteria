@@ -4,6 +4,7 @@ import PRNG "mo:core/internal/PRNG";
 import Text "mo:core/Text";
 import Nat64 "mo:core/Nat64";
 import Nat32 "mo:core/Nat32";
+import Error "mo:core/Error";
 import Int "mo:core/Int";
 import Time "mo:core/Time";
 import Result "mo:core/Result";
@@ -68,67 +69,70 @@ persistent actor GameLogic {
   Sha256.fromArray(#sha256 ,Blob.toArray(Text.encodeUtf8("pot:" # gameId)))
   };
   private func processPayouts(gameId : Text, claim : T.FailedClaim) : async Result.Result<(), Text> {
-    let l = Escrow.ledgerOf(claim.tokenType);
-    let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
-    let now_ns = Nat64.fromNat(Int.abs(Time.now()));
-    
-    var status = claim.payoutStatus;
-    var lastError = "";
+  let l = Escrow.ledgerOf(claim.tokenType);
+  let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
+  let now_ns = Nat64.fromNat(Int.abs(Time.now()));
+  
+  var status = claim.payoutStatus;
+  var lastError = "";
 
-    if (not status.devFeePaid and claim.devFee > 0) {
-      let devAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(devFeeSubAcc()));
-      let res = await l.icrc1_transfer({
-        from_subaccount = potAcct.subaccount;
-        to = devAcct;
-        amount = claim.devFee;
-        fee = null;
-        memo = null;
-        created_at_time = ?now_ns
-      });
-      switch (res) {
-        case (#Ok _) {
-          status := { status with devFeePaid = true };
-          switch (devWallet) {
-            case (?wallet) { ignore await l.icrc1_transfer({
+  if (not status.devFeePaid and claim.devFee > 0) {
+    let devAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(devFeeSubAcc()));
+    let res = await l.icrc1_transfer({
+      from_subaccount = potAcct.subaccount;
+      to = devAcct;
+      amount = claim.devFee;
+      fee = null;
+      memo = null;
+      created_at_time = ?now_ns
+    });
+    switch (res) {
+      case (#Ok _) {
+        status := { status with devFeePaid = true };
+        switch (devWallet) {
+          case (?wallet) { 
+            ignore await l.icrc1_transfer({
               from_subaccount = ?Blob.toArray(devFeeSubAcc());
               to = Escrow.acct(wallet, null);
               amount = claim.devFee;
               fee = null;
               memo = null;
               created_at_time = ?now_ns
-            }) };
-            case null {} 
+            }) 
           };
+          case null {} 
         };
-        case (#Err e) { lastError := "Dev fee: " # debug_show e };
       };
+      case (#Err e) { lastError := "Dev fee: " # debug_show e };
     };
+  };
 
-    if (not status.tablaOwnerPaid) {
-      switch (claim.tablaOwnerPayment) {
-        case (?#icrc1(principal)) {
-          if (claim.tablaOwnerFee > 0) {
-            let res = await l.icrc1_transfer({
-              from_subaccount = potAcct.subaccount;
-              to = Escrow.acct(principal, null);
-              amount = claim.tablaOwnerFee;
-              fee = null;
-              memo = null;
-              created_at_time = ?now_ns
-            });
-            switch (res) {
-              case (#Ok _) { 
-                status := { status with tablaOwnerPaid = true };
-                Analytics.recordTablaEarning(analytics, claim.tablaId, claim.tokenType, claim.tablaOwnerFee);
-              };
-              case (#Err e) { lastError := "Tabla owner: " # debug_show e };
+  if (not status.tablaOwnerPaid) {
+    switch (claim.tablaOwnerPayment) {
+      case (?#icrc1(principal)) {
+        if (claim.tablaOwnerFee > 0) {
+          let res = await l.icrc1_transfer({
+            from_subaccount = potAcct.subaccount;
+            to = Escrow.acct(principal, null);
+            amount = claim.tablaOwnerFee;
+            fee = null;
+            memo = null;
+            created_at_time = ?now_ns
+          });
+          switch (res) {
+            case (#Ok _) { 
+              status := { status with tablaOwnerPaid = true };
+              Analytics.recordTablaEarning(analytics, claim.tablaId, claim.tokenType, claim.tablaOwnerFee);
             };
-          } else {
-            status := { status with tablaOwnerPaid = true };
+            case (#Err e) { lastError := "Tabla owner ICRC1: " # debug_show e };
           };
+        } else {
+          status := { status with tablaOwnerPaid = true };
         };
-        case (?#icpAccount(accountBlob)) {
-          if (claim.tablaOwnerFee > 0) {
+      };
+      case (?#icpAccount(accountBlob)) {
+        if (claim.tablaOwnerFee > 0) {
+          try {
             let icpLedger : actor {
               transfer : ({
                 to : Blob;
@@ -145,6 +149,7 @@ persistent actor GameLogic {
                 #InsufficientFunds : { balance : { e8s : Nat64 } };
               }};
             } = actor("ryjl3-tyaaa-aaaaa-aaaba-cai");
+            
             let res = await icpLedger.transfer({
               to = accountBlob;
               fee = { e8s = 10_000 };
@@ -158,54 +163,62 @@ persistent actor GameLogic {
                 status := { status with tablaOwnerPaid = true };
                 Analytics.recordTablaEarning(analytics, claim.tablaId, claim.tokenType, claim.tablaOwnerFee);
               };
-              case (#Err e) { lastError := "Tabla owner ICP: " # debug_show e };
+              case (#Err e) { lastError := "Tabla owner ICP legacy: " # debug_show e };
             };
-          } else {
-            status := { status with tablaOwnerPaid = true };
+          } catch (e) {
+            lastError := "Tabla owner ICP legacy unavailable: " # Error.message(e);
           };
+        } else {
+          status := { status with tablaOwnerPaid = true };
         };
-        case null { status := { status with tablaOwnerPaid = true } };
       };
+      case null { status := { status with tablaOwnerPaid = true } };
     };
-
-    if (not status.winnerPaid) {
-      let res = await l.icrc1_transfer({
-        from_subaccount = potAcct.subaccount;
-        to = Escrow.acct(claim.player, null);
-        amount = claim.winnerAmount;
-        fee = null;
-        memo = null;
-        created_at_time = ?now_ns
-      });
-      switch (res) {
-        case (#Ok _) { status := { status with winnerPaid = true } };
-        case (#Err e) { lastError := "Winner: " # debug_show e };
-      };
-    };
-
-    if (not status.hostPaid) {
-      let res = await l.icrc1_transfer({
-        from_subaccount = potAcct.subaccount;
-        to = Escrow.acct(claim.host, null);
-        amount = claim.hostFee;
-        fee = null;
-        memo = null;
-        created_at_time = ?now_ns
-      });
-      switch (res) {
-        case (#Ok _) { status := { status with hostPaid = true } };
-        case (#Err e) { lastError := "Host: " # debug_show e };
-      };
-    };
-
-    if (status.devFeePaid and status.tablaOwnerPaid and status.winnerPaid and status.hostPaid) {
-      ignore Map.delete(failedClaims, Text.compare, gameId);
-      #ok(())
-    } else {
-      Map.add(failedClaims, Text.compare, gameId, { claim with payoutStatus = status; lastError = lastError; failedAt = Time.now() });
-      #err("Partial payout. Retry needed: " # lastError)
-    }
   };
+
+  if (not status.winnerPaid) {
+    let res = await l.icrc1_transfer({
+      from_subaccount = potAcct.subaccount;
+      to = Escrow.acct(claim.player, null);
+      amount = claim.winnerAmount;
+      fee = null;
+      memo = null;
+      created_at_time = ?now_ns
+    });
+    switch (res) {
+      case (#Ok _) { status := { status with winnerPaid = true } };
+      case (#Err e) { lastError := "Winner: " # debug_show e };
+    };
+  };
+
+  if (not status.hostPaid) {
+    let res = await l.icrc1_transfer({
+      from_subaccount = potAcct.subaccount;
+      to = Escrow.acct(claim.host, null);
+      amount = claim.hostFee;
+      fee = null;
+      memo = null;
+      created_at_time = ?now_ns
+    });
+    switch (res) {
+      case (#Ok _) { status := { status with hostPaid = true } };
+      case (#Err e) { lastError := "Host: " # debug_show e };
+    };
+  };
+
+  let criticalPayoutsComplete = status.devFeePaid and status.winnerPaid and status.hostPaid;
+  
+  if (criticalPayoutsComplete and status.tablaOwnerPaid) {
+    Map.remove(failedClaims, Text.compare, gameId);
+    #ok(())
+  } else if (criticalPayoutsComplete and not status.tablaOwnerPaid) {
+    Map.add(failedClaims, Text.compare, gameId, { claim with payoutStatus = status; lastError = lastError; failedAt = Time.now() });
+    #ok(())
+  } else {
+    Map.add(failedClaims, Text.compare, gameId, { claim with payoutStatus = status; lastError = lastError; failedAt = Time.now() });
+    #err("Partial payout. Retry needed: " # lastError)
+  }
+};
   public shared ({ caller }) func bootstrapAdmin() : async Result.Result<(), Text> {
     if (Map.size(admins) > 0) return #err("already bootstrapped");
     Map.add<Principal, Bool>(admins, Principal.compare, caller, true);
@@ -784,12 +797,10 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
           return #err("Game is not active");
         };
 
-        // Check if position is valid
         if (position.row >= Constants.TABLA_SIZE or position.col >= Constants.TABLA_SIZE) {
           return #err("Invalid position");
         };
 
-        // Check if player owns the tabla
         var ownsTabla = false;
         for ((player, tabla) in game.tablas.values()) {
           if (player == caller and tabla == tablaId) {
@@ -799,7 +810,6 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
         if (not ownsTabla) {
           return #err("Player does not own this tabla in this game");
         };
-        // Check if position is already marked
         for (marca in game.marcas.values()) {
           if (
             marca.tablaId == tablaId and
@@ -829,34 +839,36 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
     else return #err("Game not found");
   if (game.status != #active) return #err("Game is not active");
   if (game.winner != null) return #err("Game already has a winner");
-
+  
   var owns : Bool = false;
   for ((p, t) in Array.values<(Ids.PlayerId, Ids.TablaId)>(game.tablas)) {
     if (p == caller and t == tablaId) { owns := true };
   };
   if (not owns) return #err("Player does not own this tabla in this game");
-
+  
   let drawnSet = Utils.buildDrawnSet(Constants.TOTAL_CARDS, game.drawnCards);
   let masks = Utils.makeMasks(Constants.TABLA_SIZE);
   let mres = Utils.markMaskFor(game, caller, tablaId, Constants.TABLA_SIZE, drawnSet, cardAt);
   let #ok mm = mres else { let #err e = mres; return #err(e) };
-
+  
   let won = switch (game.mode) {
     case (#line) Utils.hasLine(mm, masks);
     case (#blackout) Utils.isBlackout(mm, masks);
   };
   if (not won) return #err("Win condition not met");
-
+  
+  // Update game state first
   Map.add<Text, T.Game>(games, Text.compare, gameId, { game with winner = ?caller; status = #completed });
   ProfileStats.updateAllPlayers(profiles, game.tablas, caller);
   Analytics.recordTablaPlayed(analytics, tablaId);
-
+  
+  // Calculate payouts
   let l = Escrow.ledgerOf(game.tokenType);
   let potAcct = Escrow.acct(Principal.fromActor(GameLogic), ?Blob.toArray(prizePoolSubAcc(gameId)));
   let pot = await l.icrc1_balance_of(potAcct);
   
   Analytics.recordLargestPot(analytics, game.tokenType, pot);
-
+  
   var tablaOwnerPayment : ?{ #icrc1: Principal; #icpAccount: Blob } = null;
   let ownerPrincipal = Map.get<Nat32, ?Principal>(ownerPrincipals, Nat32.compare, tablaId);
   switch (ownerPrincipal) {
@@ -873,7 +885,7 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
       };
     };
   };
-
+  
   let icrcFee : Nat = await l.icrc1_fee();
   let ownerViaIcrc1 : Bool = switch (tablaOwnerPayment) { case (?#icrc1(_)) true; case _ false };
   let baseIcrcDebits : Nat = 1 + 1 + (if (ownerViaIcrc1) 1 else 0);
@@ -884,13 +896,13 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
   var feeBudget : Nat = icrcFee * icrcDebits + classicFeeBudget;
   
   if (pot <= feeBudget) return #err("Pot too small to cover network fees");
+  
   let netPot : Nat = pot - feeBudget;
-
   var devFee = netPot * Constants.PLATFORM_FEE_PERCENT / 100;
   var tablaOwnerFee = switch (tablaOwnerPayment) { case null 0; case _ netPot * Constants.OWNER_FEE_PERCENT / 100 };
   var hostFee = netPot * game.hostFeePercent / 100;
   var winnerAmount = netPot - devFee - tablaOwnerFee - hostFee;
-
+  
   let claim : T.FailedClaim = {
     gameId = gameId;
     tablaId = tablaId;
@@ -906,10 +918,12 @@ func removeTablaReservation(gameId : Text, player : Principal, tablaIds : [Ids.T
     payoutStatus = { devFeePaid = false; tablaOwnerPaid = false; winnerPaid = false; hostPaid = false };
     lastError = "";
   };
-
+  
+  // Record claim BEFORE processing - ensures it can be retried if anything fails
+  Map.add(failedClaims, Text.compare, gameId, claim);
+  
   await processPayouts(gameId, claim)
 };
-
 
   public shared ({ caller }) func endGame(gameId : Text) : async Result.Result<(), Text> {
     switch (Map.get<Text, T.Game>(games, Text.compare, gameId)) {

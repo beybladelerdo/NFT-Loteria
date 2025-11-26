@@ -11,16 +11,16 @@
     onTerminate: () => void;
   }
 
-  let { 
-    status, 
-    isStarting, 
-    isDrawing, 
-    isEnding, 
+  let {
+    status,
+    isStarting,
+    isDrawing,
+    isEnding,
     isTerminating,
-    onStart, 
-    onDraw, 
-    onEnd, 
-    onTerminate 
+    onStart,
+    onDraw,
+    onEnd,
+    onTerminate,
   }: Props = $props();
 
   const isLobby = $derived("lobby" in status);
@@ -59,7 +59,9 @@
     {isEnding ? "ENDING..." : "END GAME"}
   </button>
 {:else if isCompleted}
-  <div class="arcade-panel-sm px-2 sm:px-3 py-2 text-xs font-bold text-white uppercase flex-shrink-0">
+  <div
+    class="arcade-panel-sm px-2 sm:px-3 py-2 text-xs font-bold text-white uppercase flex-shrink-0"
+  >
     Game Completed
   </div>
 {/if}

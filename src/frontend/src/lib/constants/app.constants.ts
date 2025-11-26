@@ -20,7 +20,8 @@ export const DECIMALS: Record<"ICP" | "ckBTC" | "GLDT", number> = {
   ckBTC: 8,
   GLDT: 8,
 };
-export const BACKEND_CANISTER_ID = import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
+export const BACKEND_CANISTER_ID =
+  import.meta.env.VITE_BACKEND_CANISTER_ID ?? "";
 export const SECONDS_IN_MINUTE = 60;
 export const MINUTES_IN_HOUR = 60;
 export const HOURS_IN_DAY = 24;

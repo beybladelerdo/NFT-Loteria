@@ -1,8 +1,6 @@
 import type { GameService } from "$lib/services/game-service";
 import { cardImages } from "$lib/data/gallery";
 
-
-
 export type GameView = Awaited<ReturnType<GameService["getOpenGames"]>>[number];
 export type GameDetailData = NonNullable<
   Awaited<ReturnType<GameService["getGameDetail"]>>
@@ -88,7 +86,7 @@ export const LEDGER_FEES: Record<string, bigint> = {
   GLDT: 10000n,
 };
 
-export const unwrapOpt = <T,>(opt: [] | [T]): T | null =>
+export const unwrapOpt = <T>(opt: [] | [T]): T | null =>
   opt.length ? opt[0] : null;
 
 export const symbolFromVariant = (token: GameDetailData["tokenType"]) => {
@@ -144,10 +142,9 @@ export function formatTime(nanoseconds: bigint): string {
   const seconds = totalSeconds % 60;
 
   return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
-};
+}
 
-
-  export function toNumber(val: bigint | number): number {
+export function toNumber(val: bigint | number): number {
   return typeof val === "bigint" ? Number(val) : val;
 }
 
@@ -159,19 +156,19 @@ export function formatTokenEarnings(amount: bigint | number): string {
 export function formatLastUsed(timestamp: bigint | number): string {
   const ts = toNumber(timestamp);
   if (ts === 0) return "Never";
-  
+
   const date = new Date(ts / 1_000_000);
   const now = Date.now();
   const diff = now - date.getTime();
-  
+
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  
+
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  
+
   return date.toLocaleDateString();
 }
 
@@ -201,4 +198,3 @@ export function formatDate(timestamp: bigint): string {
   const date = new Date(Number(timestamp) / 1_000_000);
   return date.toLocaleDateString();
 }
-

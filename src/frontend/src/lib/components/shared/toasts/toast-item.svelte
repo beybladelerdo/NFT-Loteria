@@ -70,10 +70,16 @@
   <div class="arcade-panel-sm p-3">
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
-        <div class="{theme.bg} border-2 border-black w-6 h-6 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-          <span class="{theme.text} font-black text-lg leading-none">{theme.icon}</span>
+        <div
+          class="{theme.bg} border-2 border-black w-6 h-6 flex items-center justify-center shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+        >
+          <span class="{theme.text} font-black text-lg leading-none"
+            >{theme.icon}</span
+          >
         </div>
-        <span class="{theme.bg} {theme.text} px-2 py-1 font-black text-[10px] uppercase border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+        <span
+          class="{theme.bg} {theme.text} px-2 py-1 font-black text-[10px] uppercase border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+        >
           {type}
         </span>
       </div>
@@ -91,7 +97,9 @@
     </p>
 
     {#if duration > 0}
-      <div class="h-2 bg-[#1a0033] border-2 border-black relative overflow-hidden shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+      <div
+        class="h-2 bg-[#1a0033] border-2 border-black relative overflow-hidden shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+      >
         <div
           class="{theme.progressBg} h-full transition-all duration-50 ease-linear"
           style="width: {progress}%"

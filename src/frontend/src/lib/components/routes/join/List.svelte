@@ -24,9 +24,7 @@
 
 <div class="arcade-panel p-4 sm:p-5 space-y-4">
   <div class="flex items-center justify-between">
-    <span class="arcade-badge">
-      OPEN LOBBIES
-    </span>
+    <span class="arcade-badge"> OPEN LOBBIES </span>
     <span class="text-xs text-white font-bold">
       {games.length}
     </span>
@@ -50,15 +48,19 @@
           onclick={() => onSelectGame(game)}
         >
           <div class="flex items-center justify-between gap-3 mb-3">
-            <h3 class="text-base sm:text-lg font-black text-white uppercase break-words">
+            <h3
+              class="text-base sm:text-lg font-black text-white uppercase break-words"
+            >
               {game.name}
             </h3>
             <span class="arcade-badge shrink-0">
               {modeLabel(game.mode)}
             </span>
           </div>
-          
-          <div class="grid grid-cols-2 gap-2 text-[10px] sm:text-xs font-bold text-[#C9B5E8] uppercase">
+
+          <div
+            class="grid grid-cols-2 gap-2 text-[10px] sm:text-xs font-bold text-[#C9B5E8] uppercase"
+          >
             <div>
               Entry:
               <span class="text-white">
@@ -73,9 +75,13 @@
               </span>
             </div>
           </div>
-          
-          <p class="mt-2 text-[10px] sm:text-[11px] text-[#8f7fc1] font-bold uppercase break-all">
-            Host: {shortPrincipal(game.host.toText())} · {statusLabel(game.status)}
+
+          <p
+            class="mt-2 text-[10px] sm:text-[11px] text-[#8f7fc1] font-bold uppercase break-all"
+          >
+            Host: {shortPrincipal(game.host.toText())} · {statusLabel(
+              game.status,
+            )}
           </p>
         </button>
       {/each}

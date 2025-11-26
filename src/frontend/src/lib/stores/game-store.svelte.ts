@@ -3,7 +3,7 @@ import type {
   GameView,
   GameDetail,
   TablaInfo,
-  TablaEarnings
+  TablaEarnings,
 } from "../../../../declarations/backend/backend.did";
 import type {
   CreateGameParams,
@@ -435,7 +435,7 @@ export const gameStore = {
       return { success: false, error: error?.message ?? String(error) };
     }
   },
-    async fetchAllTablaStats() {
+  async fetchAllTablaStats() {
     isLoading = true;
     try {
       const result = await new GameService().getAllTablaStats();

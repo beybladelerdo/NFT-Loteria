@@ -9,9 +9,7 @@
 
 <div class="arcade-panel p-4 sm:p-5">
   <div class="mb-3 sm:mb-4">
-    <span class="arcade-badge">
-      FILTER
-    </span>
+    <span class="arcade-badge"> FILTER </span>
   </div>
   <div class="flex flex-wrap gap-2">
     <button

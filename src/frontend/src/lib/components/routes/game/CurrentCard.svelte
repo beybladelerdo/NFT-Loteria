@@ -25,7 +25,9 @@
       Current Card #{cardId}
     </span>
   {:else}
-    <div class="text-center text-[#C9B5E8] font-bold text-xs uppercase py-6 sm:py-8">
+    <div
+      class="text-center text-[#C9B5E8] font-bold text-xs uppercase py-6 sm:py-8"
+    >
       Waiting for first draw...
     </div>
   {/if}

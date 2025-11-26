@@ -4,7 +4,12 @@
   import { authStore } from "$lib/stores/auth-store";
   import { gameStore } from "$lib/stores/game-store.svelte";
   import { addToast } from "$lib/stores/toasts-store";
-  import {DECIMALS, MAX_DECIMALS, MIN_BY_TOKEN, maxPlayers} from "$lib/constants/app.constants";
+  import {
+    DECIMALS,
+    MAX_DECIMALS,
+    MIN_BY_TOKEN,
+    maxPlayers,
+  } from "$lib/constants/app.constants";
   import Spinner from "$lib/components/shared/global/spinner.svelte";
   import Progress from "$lib/components/routes/host/Progress.svelte";
   import Setup from "$lib/components/routes/host/Setup.svelte";
@@ -29,7 +34,9 @@
   });
 
   let gameLink = $derived(
-    gameIdCreated ? `${window.location.origin}/join-game?gameId=${gameIdCreated}` : ""
+    gameIdCreated
+      ? `${window.location.origin}/join-game?gameId=${gameIdCreated}`
+      : "",
   );
 
   function POW10(n: number) {
@@ -66,26 +73,26 @@
   function onEntryFeeInput(e: Event) {
     const el = e.target as HTMLInputElement;
     let v = el.value;
-    
+
     // Remove any non-numeric characters except decimal point
-    v = v.replace(/[^0-9.]/g, '');
-    
+    v = v.replace(/[^0-9.]/g, "");
+
     // Ensure only one decimal point
-    const parts = v.split('.');
+    const parts = v.split(".");
     if (parts.length > 2) {
-      v = parts[0] + '.' + parts.slice(1).join('');
+      v = parts[0] + "." + parts.slice(1).join("");
     }
-    
+
     // Prevent starting with multiple zeros
-    if (v.startsWith('00')) {
-      v = '0';
+    if (v.startsWith("00")) {
+      v = "0";
     }
-    
+
     // Limit to MAX_DECIMALS after decimal point
     if (parts.length === 2 && parts[1].length > MAX_DECIMALS) {
-      v = parts[0] + '.' + parts[1].slice(0, MAX_DECIMALS);
+      v = parts[0] + "." + parts[1].slice(0, MAX_DECIMALS);
     }
-    
+
     el.value = v;
     entryFeeInput = v;
   }
@@ -183,7 +190,10 @@
   async function createGame() {
     if (!validateStep1() || !validateStep2()) {
       addToast({
-        message: errors.gameName || errors.entryFee || "Please fix all validation errors",
+        message:
+          errors.gameName ||
+          errors.entryFee ||
+          "Please fix all validation errors",
         type: "error",
         duration: 3000,
       });
@@ -259,7 +269,9 @@
   <div class="min-h-screen bg-[#1a0033] pb-8">
     <div class="max-w-4xl mx-auto px-4 py-6 sm:py-8 md:py-12">
       <div class="mb-6 sm:mb-8 text-center">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-black uppercase mb-2 px-2 arcade-text-shadow">
+        <h1
+          class="text-3xl sm:text-4xl md:text-5xl font-black uppercase mb-2 px-2 arcade-text-shadow"
+        >
           <span class="text-[#F4E04D]">HOST NEW GAME</span>
         </h1>
         <Progress {currentStep} />
@@ -331,7 +343,11 @@
             disabled={isCreating || gameIdCreated !== null}
             class="arcade-button flex-1 px-4 sm:px-6 py-3 text-sm sm:text-base disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isCreating ? "CREATING..." : gameIdCreated ? "GAME CREATED!" : "CREATE GAME ►"}
+            {isCreating
+              ? "CREATING..."
+              : gameIdCreated
+                ? "GAME CREATED!"
+                : "CREATE GAME ►"}
           </button>
         {/if}
       </div>

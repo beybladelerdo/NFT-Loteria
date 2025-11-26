@@ -47,13 +47,28 @@
 
   const balances = $derived({
     ICP: tokenBalances.find((b) => b.symbol === "ICP")
-      ? parseFloat(tokenService.formatBalance(tokenBalances.find((b) => b.symbol === "ICP")!.balance, 8))
+      ? parseFloat(
+          tokenService.formatBalance(
+            tokenBalances.find((b) => b.symbol === "ICP")!.balance,
+            8,
+          ),
+        )
       : 0,
     ckBTC: tokenBalances.find((b) => b.symbol === "ckBTC")
-      ? parseFloat(tokenService.formatBalance(tokenBalances.find((b) => b.symbol === "ckBTC")!.balance, 8))
+      ? parseFloat(
+          tokenService.formatBalance(
+            tokenBalances.find((b) => b.symbol === "ckBTC")!.balance,
+            8,
+          ),
+        )
       : 0,
     GLDT: tokenBalances.find((b) => b.symbol === "GLDT")
-      ? parseFloat(tokenService.formatBalance(tokenBalances.find((b) => b.symbol === "GLDT")!.balance, 8))
+      ? parseFloat(
+          tokenService.formatBalance(
+            tokenBalances.find((b) => b.symbol === "GLDT")!.balance,
+            8,
+          ),
+        )
       : 0,
   });
 
@@ -304,14 +319,18 @@
       gridGap={6}
       color="rgba(196, 154, 250, 0.5)"
     />
-    
+
     <div class="relative z-10 max-w-7xl mx-auto px-4 py-6 sm:py-8">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
+      >
         <div>
           <span class="arcade-badge inline-block mb-2 sm:mb-3">
             Join Game
           </span>
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase arcade-text-shadow">
+          <h1
+            class="text-2xl sm:text-3xl md:text-4xl font-black text-white uppercase arcade-text-shadow"
+          >
             Find A Lobby
           </h1>
         </div>
@@ -325,17 +344,18 @@
       </div>
 
       {#if errorMessage}
-        <div class="bg-red-500 border-4 border-black text-white font-bold uppercase text-xs sm:text-sm px-4 py-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-6">
+        <div
+          class="bg-red-500 border-4 border-black text-white font-bold uppercase text-xs sm:text-sm px-4 py-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] mb-6"
+        >
           {errorMessage}
         </div>
       {/if}
 
-      <div class="grid lg:grid-cols-[340px,1fr] xl:grid-cols-[360px,1fr] gap-4 sm:gap-6">
+      <div
+        class="grid lg:grid-cols-[340px,1fr] xl:grid-cols-[360px,1fr] gap-4 sm:gap-6"
+      >
         <aside class="space-y-4 sm:space-y-6">
-          <GameFilters
-            {modeFilter}
-            onFilterChange={(f) => (modeFilter = f)}
-          />
+          <GameFilters {modeFilter} onFilterChange={(f) => (modeFilter = f)} />
 
           <GameList
             games={filteredGames}
@@ -348,11 +368,17 @@
         <section class="space-y-4 sm:space-y-6">
           {#if !selectedGame}
             <div class="arcade-panel p-6">
-              <h2 class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow">
+              <h2
+                class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase mb-4 arcade-text-shadow"
+              >
                 Choose A Game
               </h2>
-              <p class="text-xs sm:text-sm font-bold uppercase leading-relaxed text-white">
-                Select a lobby to see its details, review the entry fee, and pick your tabla. Once you approve the tokens, you'll be dropped straight into the game.
+              <p
+                class="text-xs sm:text-sm font-bold uppercase leading-relaxed text-white"
+              >
+                Select a lobby to see its details, review the entry fee, and
+                pick your tabla. Once you approve the tokens, you'll be dropped
+                straight into the game.
               </p>
             </div>
           {:else}
@@ -374,7 +400,9 @@
                 onSelect={handleTablaSelect}
               />
 
-              <div class="arcade-panel-sm p-4 space-y-2 text-xs font-bold uppercase text-[#C9B5E8]">
+              <div
+                class="arcade-panel-sm p-4 space-y-2 text-xs font-bold uppercase text-[#C9B5E8]"
+              >
                 <div class="flex items-center justify-between">
                   <span>Entry Fee</span>
                   <span class="text-white">
@@ -419,7 +447,10 @@
 
               <button
                 class="arcade-button w-full px-4 py-3 text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
-                disabled={selectedTablaIds.length === 0 || isApproving || isJoining || !hasSufficientBalance}
+                disabled={selectedTablaIds.length === 0 ||
+                  isApproving ||
+                  isJoining ||
+                  !hasSufficientBalance}
                 onclick={approveAndJoin}
               >
                 {isApproving

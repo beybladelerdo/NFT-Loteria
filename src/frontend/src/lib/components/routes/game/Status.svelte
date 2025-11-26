@@ -16,38 +16,42 @@
     children?: any;
   }
 
-  let { 
-    gameDetail, 
-    potBalance, 
-    lastDrawnCardId, 
-    currentCardId, 
+  let {
+    gameDetail,
+    potBalance,
+    lastDrawnCardId,
+    currentCardId,
     remainingCards,
     totalCards,
     potDisbursed = false,
     onRefresh,
-    children
+    children,
   }: Props = $props();
 
   const tokenService = new TokenService();
 
   const formattedPotBalance = $derived(
-    potBalance !== null ? tokenService.formatBalance(potBalance, 8) : "—"
+    potBalance !== null ? tokenService.formatBalance(potBalance, 8) : "—",
   );
 </script>
 
-<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+<div
+  class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4"
+>
   <div class="flex-1 min-w-0">
     <span class="arcade-badge bg-[#FF6EC7] inline-block mb-2 sm:mb-3">
       Game Status
     </span>
-    <p class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase arcade-text-shadow break-words">
+    <p
+      class="text-xl sm:text-2xl font-black text-[#F4E04D] uppercase arcade-text-shadow break-words"
+    >
       {statusLabel(gameDetail.status)}
     </p>
     <p class="text-xs font-bold text-white uppercase mt-2">
       Mode: {modeLabel(gameDetail.mode)} · Remaining Cards: {remainingCards}
     </p>
   </div>
-  
+
   <div class="flex flex-wrap gap-2">
     {#if children}
       {@render children()}
@@ -64,7 +68,9 @@
   </div>
 </div>
 
-<div class="mt-4 arcade-panel-sm px-3 sm:px-4 py-3 sm:py-4 space-y-2 text-white">
+<div
+  class="mt-4 arcade-panel-sm px-3 sm:px-4 py-3 sm:py-4 space-y-2 text-white"
+>
   <p class="text-xs font-bold uppercase">
     Cards Drawn: {totalCards - remainingCards} of {totalCards}
   </p>
