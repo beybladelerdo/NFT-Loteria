@@ -19,6 +19,7 @@ import type {
   Result_1,
   Result_2,
   Result_3,
+  Result_4,
   Result_5,
   Result_6,
   Result_7,
@@ -28,6 +29,9 @@ import type {
   Result_11,
   Result_12,
   Result_13,
+  Result_14,
+  Result_15,
+  Result_16,
 } from "../../../../declarations/backend/backend.did";
 import { BACKEND_CANISTER_ID } from "$lib/constants/app.constants";
 
@@ -104,7 +108,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetOpenGames = { page: BigInt(page) };
-      const res: Result_6 = await actor.getOpenGames(dto);
+      const res: Result_7 = await actor.getOpenGames(dto);
       if ("err" in res) return [];
       return res.ok.openGames;
     } catch (e) {
@@ -117,7 +121,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetActiveGames = { page: BigInt(page) };
-      const res: Result_11 = await actor.getActiveGames(dto);
+      const res: Result_13 = await actor.getActiveGames(dto);
       if ("err" in res) return [];
       return res.ok.activeGames;
     } catch (e) {
@@ -130,7 +134,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_8 = await actor.getGame(dto);
+      const res: Result_10 = await actor.getGame(dto);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
@@ -142,7 +146,7 @@ export class GameService {
     try {
       const actor = await this.getActor();
       const dto: GetGame = { gameId };
-      const res: Result_7 = await actor.getGameDetail(dto);
+      const res: Result_9 = await actor.getGameDetail(dto);
       if ("err" in res) return null;
       return res.ok;
     } catch (e) {
@@ -220,6 +224,19 @@ export class GameService {
       return { success: false, error: e?.message ?? String(e) };
     }
   }
+  async leaveGame(
+    gameId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const actor = await this.getActor();
+      const res: Result = await actor.leaveGame(gameId);
+      if ("err" in res) return { success: false, error: res.err };
+      return { success: true };
+    } catch (e: any) {
+      console.error("Failed to leave game:", e);
+      return { success: false, error: e?.message ?? String(e) };
+    }
+  }
 
   async endGame(gameId: string): Promise<{ success: boolean; error?: string }> {
     try {
@@ -238,7 +255,7 @@ export class GameService {
   ): Promise<{ success: boolean; cardId?: number; error?: string }> {
     try {
       const actor = await this.getActor();
-      const res: Result_12 = await actor.drawCard(gameId);
+      const res: Result_14 = await actor.drawCard(gameId);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true, cardId: Number(res.ok) };
     } catch (e: any) {
@@ -250,7 +267,7 @@ export class GameService {
   async getDrawHistory(gameId: string): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_9 = await actor.getDrawHistory({ gameId });
+      const res: Result_11 = await actor.getDrawHistory({ gameId });
       if ("err" in res) return [];
       return Array.from(res.ok as ArrayLike<number>, Number);
     } catch (e) {
@@ -279,7 +296,7 @@ export class GameService {
   async getAvailableTablas(): Promise<TablaInfo[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_10 = await actor.getAvailableTablas();
+      const res: Result_12 = await actor.getAvailableTablas();
       if ("err" in res) return [];
       return res.ok;
     } catch (e) {
@@ -291,7 +308,7 @@ export class GameService {
   async getTabla(tablaId: number): Promise<TablaInfo | null> {
     try {
       const actor = await this.getActor();
-      const res: Result_3 = await actor.getTabla(tablaId);
+      const res: Result_4 = await actor.getTabla(tablaId);
       if ("err" in res) return null;
       return unwrapOpt(res.ok);
     } catch (e) {
@@ -303,7 +320,7 @@ export class GameService {
   async getTablaCards(tablaId: number): Promise<number[]> {
     try {
       const actor = await this.getActor();
-      const res: Result_2 = await actor.getTablaCards(tablaId);
+      const res: Result_3 = await actor.getTablaCards(tablaId);
       if ("err" in res) return [];
       return res.ok.map((n) => Number(n));
     } catch (e) {
@@ -433,7 +450,7 @@ export class GameService {
   ): Promise<{ success: boolean; tablas?: any[]; error?: string }> {
     try {
       const actor = await this.getActor();
-      const res: Result_10 = await actor.getAvailableTablasForGame(gameId);
+      const res: Result_12 = await actor.getAvailableTablasForGame(gameId);
       if ("err" in res) return { success: false, error: res.err };
       return { success: true, tablas: res.ok };
     } catch (e: any) {

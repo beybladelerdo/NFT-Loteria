@@ -20,6 +20,8 @@
   import Toasts from "$lib/components/shared/toasts/toasts.svelte";
   import SetUsername from "$lib/components/routes/profile/SetUsername.svelte";
   import GameReturnModal from "$lib/components/routes/game/ReturnModal.svelte";
+  import { GameService } from "$lib/services/game-service";
+  import { addToast } from "$lib/stores/toasts-store";
   import "../../app.css";
 
   interface Props {
@@ -128,8 +130,70 @@
     }
   }
 
-  function dismissGamePrompt() {
-    showGameReturnPrompt = false;
+  async function clearActiveGameOnStayHere() {
+    if (!activeGame) return;
+
+    const gameService = new GameService();
+    let result:
+      | {
+          success: boolean;
+          error?: string;
+        }
+      | undefined;
+
+    if (activeGame.role === "host") {
+      result = await gameService.terminateGame(activeGame.gameId);
+    } else {
+      result = await gameService.leaveGame(activeGame.gameId);
+    }
+
+    if (result?.success) {
+      addToast({
+        type: "success",
+        message:
+          activeGame.role === "host"
+            ? "Game terminated. You’re no longer hosting a lobby."
+            : "You left the game lobby.",
+      });
+      activeGame = null;
+      showGameReturnPrompt = false;
+    } else {
+      addToast({
+        type: "error",
+        message:
+          result?.error ??
+          "Failed to update game. You may still be in an active lobby.",
+      });
+    }
+  }
+
+  async function dismissGamePrompt() {
+    if (!activeGame) {
+      showGameReturnPrompt = false;
+      return;
+    }
+
+    if (!browser) {
+      showGameReturnPrompt = false;
+      return;
+    }
+
+    const actionVerb =
+      activeGame.role === "host"
+        ? "terminate this lobby for all players"
+        : "leave this lobby";
+
+    const confirmed = window.confirm(
+      `You have an active game (${activeGame.gameId}).\n\n` +
+        `If you stay here, we will ${actionVerb}.\n\n` +
+        `Are you sure you want to continue?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await clearActiveGameOnStayHere();
   }
 
   async function userCreated() {

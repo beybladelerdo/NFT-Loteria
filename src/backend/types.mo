@@ -1,4 +1,11 @@
-import Ids "ids";
+/**
+ * NFT Lotería - Types
+ * Type definitions and data structures
+ * 
+ * @author Demali Gregg
+ * @company Canister Software Inc.
+ */
+import Ids "Ids";
 import BaseIds "mo:waterway-mops/base/ids";
 import Nat32 "mo:core/Nat32";
 
@@ -6,15 +13,15 @@ module Types {
   public type Entry = (Nat32, Text);
   public type PaidKey = (Text, Principal);
    public type GameStatus = {
-    #lobby; // Players can join
-    #active; // Game in progress
-    #completed; // Game finished
+    #lobby;
+    #active;
+    #completed;
   };
 
   // Game mode
   public type GameMode = {
-    #line; // Win by completing a line, row, or diagonal
-    #blackout; // Win by marking all positions
+    #line;
+    #blackout;
   };
 
   // Token type

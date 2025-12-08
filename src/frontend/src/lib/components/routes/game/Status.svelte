@@ -13,6 +13,8 @@
     totalCards: number;
     potDisbursed?: boolean;
     onRefresh: () => void;
+    isLeaving?: boolean;
+    onLeave?: () => void;
     children?: any;
   }
 
@@ -25,6 +27,8 @@
     totalCards,
     potDisbursed = false,
     onRefresh,
+    onLeave,
+    isLeaving = false,
     children,
   }: Props = $props();
 
@@ -62,6 +66,15 @@
     >
       Refresh
     </button>
+    {#if onLeave}
+      <button
+        class="bg-[#FF6EC7] text-[#1a0033] border-2 sm:border-4 border-black px-3 sm:px-4 py-2 font-black uppercase text-xs shadow-[3px_3px_0px_rgba(0,0,0,1)] sm:shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:bg-[#ff8fd4] active:scale-95 disabled:bg-gray-400 disabled:cursor-not-allowed flex-shrink-0"
+        onclick={onLeave}
+        disabled={isLeaving}
+      >
+        {isLeaving ? "LEAVING..." : "LEAVE GAME"}
+      </button>
+    {/if}
     <div class="flex-shrink-0">
       <AudioToggle />
     </div>

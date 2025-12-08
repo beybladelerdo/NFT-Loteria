@@ -18,6 +18,7 @@
   import CurrentCardDisplay from "$lib/components/routes/game/CurrentCard.svelte";
   import TablaCard from "$lib/components/routes/game/Card.svelte";
   import TablaNav from "$lib/components/routes/game/TablaNav.svelte";
+  import LeaveGame from "$lib/components/routes/game/LeaveGame.svelte";
   import DrawHistoryGrid from "$lib/components/routes/game/DrawHistory.svelte";
   import WinModal from "$lib/components/routes/game/WinModal.svelte";
   import ShareInvitePanel from "$lib/components/routes/game/ShareInvite.svelte";
@@ -65,6 +66,8 @@
   let inviteLink = $state("");
   let errorMessage = $state("");
   let gameTerminated = $state(false);
+  let isLeaving = $state(false);
+  let showLeavingModal = $state(false);
   let potBalance = $state<bigint | null>(null);
   let pollHandle: ReturnType<typeof setInterval> | null = null;
   let showCardAnimation = $state(false);
@@ -313,6 +316,30 @@
       errorMessage = "Failed to load game detail.";
     } finally {
       if (showSpinner) isLoading = false;
+    }
+  }
+  async function handleLeaveGame() {
+    if (!gameId) return;
+    showLeavingModal = false;
+    isLeaving = true;
+
+    const result = await gameStore.leaveGame(gameId);
+    if (result.success) {
+      addToast({
+        message: "Existed game successfully. Redirecting...",
+        type: "success",
+        duration: 3000,
+      });
+      setTimeout(() => {
+        goto("/dashboard");
+      }, 1500);
+    } else {
+      addToast({
+        message: result.error || "Failed to leave game.",
+        type: "error",
+        duration: 3000,
+      });
+      isLeaving = false;
     }
   }
 
@@ -601,6 +628,8 @@
                 totalCards={TOTAL_CARDS}
                 {potDisbursed}
                 onRefresh={() => refreshGame(true)}
+                onLeave={() => (showLeavingModal = true)}
+                {isLeaving}
               />
 
               <div class="flex justify-center">
@@ -646,6 +675,13 @@
     </div>
   {/if}
 {/if}
+
+<LeaveGame
+  show={showLeavingModal}
+  {isLeaving}
+  onConfirm={handleLeaveGame}
+  onCancel={() => (showLeavingModal = false)}
+/>
 
 <WinModal
   show={shouldShowWinModal}

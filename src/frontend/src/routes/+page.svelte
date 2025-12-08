@@ -14,7 +14,6 @@
     window.open("https://dgdg.app/nfts/collections/nft_loteria", "_blank");
 
   let volume24h = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
-  let prevVolume24h = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
   let volumeChange = $state({ icp: 0, ckbtc: 0, gldt: 0 });
   let largestPots = $state({ icp: 0n, ckbtc: 0n, gldt: 0n });
   let isLoading = $state(true);
@@ -47,34 +46,24 @@
       ]);
 
       if (vol24hRes.success && vol24hRes.data) {
-        if (
-          prevVolume24h.icp > 0n ||
-          prevVolume24h.ckbtc > 0n ||
-          prevVolume24h.gldt > 0n
-        ) {
-          volumeChange = {
-            icp: calculatePercentChange(
-              vol24hRes.data.totalICP,
-              prevVolume24h.icp,
-            ),
-            ckbtc: calculatePercentChange(
-              vol24hRes.data.totalCkBTC,
-              prevVolume24h.ckbtc,
-            ),
-            gldt: calculatePercentChange(
-              vol24hRes.data.totalGLDT,
-              prevVolume24h.gldt,
-            ),
-          };
-        }
-
-        prevVolume24h = { ...volume24h };
-
-        volume24h = {
+        const nextVolume = {
           icp: vol24hRes.data.totalICP,
           ckbtc: vol24hRes.data.totalCkBTC,
           gldt: vol24hRes.data.totalGLDT,
         };
+
+        if (
+          volume24h.icp > 0n ||
+          volume24h.ckbtc > 0n ||
+          volume24h.gldt > 0n
+        ) {
+          volumeChange = {
+            icp: calculatePercentChange(nextVolume.icp, volume24h.icp),
+            ckbtc: calculatePercentChange(nextVolume.ckbtc, volume24h.ckbtc),
+            gldt: calculatePercentChange(nextVolume.gldt, volume24h.gldt),
+          };
+        }
+        volume24h = nextVolume;
       }
 
       if (largestPotsRes.success && largestPotsRes.data) {
@@ -90,6 +79,7 @@
       isLoading = false;
     }
   }
+
 
   onMount(async () => {
     await fetchStats();
@@ -404,6 +394,56 @@
             >
               DASHBOARD
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="relative mx-auto mt-12 w-full max-w-[1200px]">
+      <div class="arcade-panel p-6 md:p-8 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6 items-center">
+        <div>
+          <div class="arcade-badge mb-3 inline-block bg-[#F4E04D] text-[#1a0033]">
+            Buy a Tabla
+          </div>
+          <h3
+            class="text-3xl md:text-4xl font-black text-white uppercase mb-3 arcade-text-shadow"
+          >
+            Own a tabla, earn the upside
+          </h3>
+          <p class="text-sm md:text-base font-bold text-white mb-4">
+            Grab one of the 363 EXT tablas on DGDG. When players win using your tabla, you collect 10% of their prize. Trade freely today, and stay tuned as we prepare a future move toward ICRC-7 compatibility.
+          </p>
+          <div class="flex flex-wrap gap-3">
+            <button
+              onclick={buyTabla}
+              class="bg-[#F4E04D] text-[#1a0033] px-6 py-3 font-black uppercase border-4 border-black hover:bg-[#ffe45c] active:translate-x-[2px] active:translate-y-[2px] transition-all text-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+            >
+              Buy on DGDG
+            </button>
+            <button
+              onclick={dashboard}
+              class="bg-white text-[#1a0033] px-6 py-3 font-black uppercase border-4 border-black hover:bg-[#f0f0f0] active:translate-x-[2px] active:translate-y-[2px] transition-all text-sm shadow-[4px_4px_0px_rgba(0,0,0,1)] active:shadow-[2px_2px_0px_rgba(0,0,0,1)]"
+            >
+              View Dashboard
+            </button>
+          </div>
+        </div>
+        <div class="bg-[#1a0033] border-4 border-black p-4 shadow-[8px_8px_0px_rgba(0,0,0,0.8)]">
+          <div class="text-center">
+            <p class="text-xs font-bold text-[#C9B5E8] uppercase mb-2">
+              Marketplace Listing
+            </p>
+            <a
+              href="https://dgdg.app/nfts/collections/nft_loteria"
+              target="_blank"
+              rel="noreferrer"
+              class="block bg-[#C9B5E8] text-[#1a0033] font-black uppercase px-4 py-3 border-2 border-black hover:bg-white transition-all shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+            >
+              dgdg.app/nfts/collections/nft_loteria
+            </a>
+            <p class="text-[11px] font-bold text-white mt-3 opacity-80">
+              Open in a new tab to browse available tablas and recent sales.
+            </p>
           </div>
         </div>
       </div>

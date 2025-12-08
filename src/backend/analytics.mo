@@ -1,11 +1,17 @@
-// analytics.mo
+/**
+ * NFT Lotería - Analytics
+ * Platform statistics and metrics tracking
+ * 
+ * @author Demali Gregg
+ * @company Canister Software Inc.
+ */
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
 import Nat32 "mo:core/Nat32";
 import Time "mo:core/Time";
 import Int "mo:core/Int";
 import List "mo:core/List";
-import T "types";
+import T "Types";
 
 module {
   public type VolumeData = {

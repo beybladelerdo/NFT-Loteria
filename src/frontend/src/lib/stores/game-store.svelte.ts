@@ -10,6 +10,7 @@ import type {
   CreateTablaParams,
   PrincipalEntry,
 } from "$lib/services/game-service";
+import type LeaveGame from "$lib/components/routes/game/LeaveGame.svelte";
 
 export interface GameStoreData {
   openGames: GameView[];
@@ -138,6 +139,23 @@ export const gameStore = {
       return { success: false, error: result.error };
     } catch (error: any) {
       console.error("Error starting game:", error);
+      return { success: false, error: error?.message ?? String(error) };
+    } finally {
+      isLoading = false;
+    }
+  },
+  async leaveGame(gameId: string) {
+    isLoading = true;
+    try {
+      const result = await new GameService().leaveGame(gameId);
+      if (result.success) {
+        await gameStore.fetchOpenGames();
+        await gameStore.fetchActiveGames();
+        return { success: true };
+      }
+      return { success: false, error: result.error };
+    } catch (error: any) {
+      console.error("Error leaving game:", error);
       return { success: false, error: error?.message ?? String(error) };
     } finally {
       isLoading = false;

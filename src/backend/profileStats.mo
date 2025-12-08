@@ -1,7 +1,14 @@
-import Map "mo:core/Map";
+/**
+ * User Profile
+ * State mutation of player profile.
+ * 
+ * @author Demali Gregg
+ * @company Canister Software Inc.
+ */
+ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 import Float "mo:core/Float";
-import T "types";
+import T "Types";
 
 module {
   public func updateStats(
